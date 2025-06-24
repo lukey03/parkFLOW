@@ -1,10 +1,6 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
-import {
-	ApplicationIntegrationType, InteractionContextType,
-	ContainerBuilder, MessageFlags,
-	TextDisplayBuilder,
-} from 'discord.js';
+import { ApplicationIntegrationType, InteractionContextType, ContainerBuilder, MessageFlags, TextDisplayBuilder } from 'discord.js';
 
 @ApplyOptions<Command.Options>({
 	description: 'Pong!'
@@ -12,9 +8,7 @@ import {
 export class UserCommand extends Command {
 	public override registerApplicationCommands(registry: Command.Registry) {
 		const integrationTypes: ApplicationIntegrationType[] = [ApplicationIntegrationType.GuildInstall];
-		const contexts: InteractionContextType[] = [
-			InteractionContextType.Guild
-		];
+		const contexts: InteractionContextType[] = [InteractionContextType.Guild];
 
 		registry.registerChatInputCommand({
 			name: this.name,
@@ -31,8 +25,7 @@ export class UserCommand extends Command {
 	private async sendPing(interaction: Command.ChatInputCommandInteraction) {
 		const pingContainer = new ContainerBuilder();
 
-		const header = new TextDisplayBuilder()
-			.setContent('## Pinging parkFLOW... 🏓');
+		const header = new TextDisplayBuilder().setContent('## Pinging parkFLOW... 🏓');
 
 		pingContainer.addTextDisplayComponents(header);
 
@@ -46,16 +39,17 @@ export class UserCommand extends Command {
 
 		const pongContainer = new ContainerBuilder();
 
-		const pongHeader = new TextDisplayBuilder()
-			.setContent('# Pong! 🏓');
+		const pongHeader = new TextDisplayBuilder().setContent('# Pong! 🏓');
 
 		pongContainer.addTextDisplayComponents(pongHeader);
 
-		return interaction.editReply({
-			components: [pongContainer],
-			flags: [MessageFlags.IsComponentsV2]
-		}).catch(error => {
-			this.container.logger.error('Failed to edit reply:', error);
-		});
+		return interaction
+			.editReply({
+				components: [pongContainer],
+				flags: [MessageFlags.IsComponentsV2]
+			})
+			.catch((error) => {
+				this.container.logger.error('Failed to edit reply:', error);
+			});
 	}
 }
