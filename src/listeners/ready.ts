@@ -2,6 +2,7 @@ import { ApplyOptions } from '@sapphire/decorators';
 import { Listener } from '@sapphire/framework';
 import type { StoreRegistryValue } from '@sapphire/pieces';
 import { blue, gray, green, magenta, magentaBright, white, yellow } from 'colorette';
+import { TaskManager } from '../lib/tasks';
 
 const dev = process.env.NODE_ENV !== 'production';
 
@@ -12,6 +13,7 @@ export class UserEvent extends Listener {
 	public override run() {
 		this.printBanner();
 		this.printStoreDebugInformation();
+		this.startPeriodicTasks();
 	}
 
 	private printBanner() {
@@ -47,5 +49,12 @@ ${line03}${dev ? ` ${pad}${blc('<')}${llc('/')}${blc('>')} ${llc('DEVELOPMENT MO
 
 	private styleStore(store: StoreRegistryValue, last: boolean) {
 		return gray(`${last ? '└─' : '├─'} Loaded ${this.style(store.size.toString().padEnd(3, ' '))} ${store.name}.`);
+	}
+
+	private startPeriodicTasks() {
+		this.container.logger.info('Starting periodic tasks...');
+		TaskManager.getInstance().setClient(this.container.client);
+		TaskManager.getInstance().startPeriodicTasks();
+		this.container.logger.info('Periodic tasks started');
 	}
 }

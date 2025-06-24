@@ -94,6 +94,11 @@ export class GuildSettingsModel {
 		stmt.run(...values, guildId);
 		return this.findByGuildId(guildId);
 	}
+
+	public getAllWithActiveShiftChannel(): GuildSettings[] {
+		const stmt = this.db.prepare('SELECT * FROM guild_settings WHERE active_shift_channel_id IS NOT NULL');
+		return stmt.all() as GuildSettings[];
+	}
 }
 
 export class ShiftModel {

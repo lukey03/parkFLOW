@@ -3,6 +3,7 @@ import { Command } from '@sapphire/framework';
 import { MessageFlags, ContainerBuilder, TextDisplayBuilder, SeparatorSpacingSize, TextChannel } from 'discord.js';
 import { Subcommand } from '@sapphire/plugin-subcommands';
 import { Database } from '../lib/database';
+import { TaskManager } from '../lib/tasks';
 
 @ApplyOptions<Subcommand.Options>({
 	name: 'shift',
@@ -72,6 +73,15 @@ export class ShiftCommand extends Subcommand {
 	private formatDurationString(seconds: number): string {
 		const { hours, minutes } = this.formatDuration(seconds);
 		return `${hours}h ${minutes}m`;
+	}
+
+	private isValidUrl(url: string): boolean {
+		try {
+			new URL(url);
+			return true;
+		} catch {
+			return false;
+		}
 	}
 
 	private buildContainer(header: string, content: string): ContainerBuilder {
@@ -209,80 +219,6 @@ export class ShiftCommand extends Subcommand {
 		}
 	}
 
-	private async updateActiveShiftDisplay(guildId: string): Promise<void> {
-		try {
-			const guildSettings = Database.guildSettings.findByGuildId(guildId);
-			if (!guildSettings?.active_shift_channel_id) {
-				return;
-			}
-
-			const channel = await this.container.client.channels.fetch(guildSettings.active_shift_channel_id);
-			if (!channel?.isTextBased()) {
-				return;
-			}
-
-			const activeShifts = Database.shifts.findActiveShifts(guildId);
-
-			if (activeShifts.length === 0) {
-				const container = this.buildContainer('## 🕐 Active Shifts', '_No users are currently on shift._');
-				await this.sendOrUpdateActiveShiftMessage(channel as TextChannel, container);
-				return;
-			}
-			const shiftLines: string[] = [];
-			const currentTime = Math.floor(Date.now() / 1000);
-
-			for (const shift of activeShifts) {
-				try {
-					const guild = await this.container.client.guilds.fetch(guildId);
-					const member = await guild.members.fetch(shift.discord_id);
-					const displayName = member.displayName;
-					const shiftDuration = currentTime - shift.start_time;
-					const durationStr = this.formatDurationString(shiftDuration);
-					const activeBreak = Database.breaks.findActiveBreak(shift.discord_id, guildId);
-					const breakStatus = activeBreak ? ' 🔄 *On Break*' : '';
-
-					shiftLines.push(`• **${displayName}** - ${durationStr}${breakStatus}`);
-				} catch (error) {
-					const shiftDuration = currentTime - shift.start_time;
-					const durationStr = this.formatDurationString(shiftDuration);
-					const activeBreak = Database.breaks.findActiveBreak(shift.discord_id, guildId);
-					const breakStatus = activeBreak ? ' 🔄 *On Break*' : '';
-
-					shiftLines.push(`• <@${shift.discord_id}> - ${durationStr}${breakStatus}`);
-				}
-			}
-
-			const container = this.buildContainer(
-				'## 🕐 Active Shifts',
-				[`**${activeShifts.length} user${activeShifts.length !== 1 ? 's' : ''} currently on shift:**`, '', ...shiftLines].join('\n')
-			);
-
-			await this.sendOrUpdateActiveShiftMessage(channel as TextChannel, container);
-		} catch (error) {
-			this.container.logger.error('Failed to update active shift display:', error);
-		}
-	}
-
-	private async sendOrUpdateActiveShiftMessage(channel: TextChannel, container: ContainerBuilder): Promise<void> {
-		try {
-			const messages = await channel.messages.fetch({ limit: 50 });
-			const existingMessage = messages.find((msg) => msg.author.id === this.container.client.user?.id && msg.components.length > 0);
-
-			if (existingMessage) {
-				await existingMessage.edit({
-					components: [container],
-					flags: [MessageFlags.IsComponentsV2]
-				});
-			} else {
-				await channel.send({
-					components: [container],
-					flags: [MessageFlags.IsComponentsV2]
-				});
-			}
-		} catch (error) {
-			this.container.logger.error('Failed to send/update active shift message:', error);
-		}
-	}
 
 	public override registerApplicationCommands(registry: Command.Registry) {
 		registry.registerChatInputCommand((builder) =>
@@ -405,6 +341,11 @@ export class ShiftCommand extends Subcommand {
 		const type = interaction.options.getString('type', true);
 		const proof = interaction.options.getString('proof', true);
 
+		if (!this.isValidUrl(proof)) {
+			const container = this.buildErrorContainer('Invalid Proof', 'Proof must be a valid URL.');
+			return this.replyWithContainer(interaction, container);
+		}
+
 		try {
 			if (type === 'shift') {
 				const activeShift = Database.shifts.findActiveShift(interaction.user.id, interaction.guildId!);
@@ -432,7 +373,7 @@ export class ShiftCommand extends Subcommand {
 						Ended: `<t:${Math.floor(Date.now() / 1000)}:f>`
 					});
 
-					await this.updateActiveShiftDisplay(interaction.guildId!);
+					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId!);
 
 					const container = this.buildMultiSectionContainer('## parkFLOW Shift Action - Ended', [
 						'You have __ended__ your shift.',
@@ -454,7 +395,7 @@ export class ShiftCommand extends Subcommand {
 						Started: `<t:${Math.floor(Date.now() / 1000)}:f>`
 					});
 
-					await this.updateActiveShiftDisplay(interaction.guildId!);
+					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId!);
 
 					const container = this.buildMultiSectionContainer('## parkFLOW Shift Action - Started', [
 						'You have __started__ your shift.',
@@ -487,7 +428,7 @@ export class ShiftCommand extends Subcommand {
 						Ended: `<t:${Math.floor(Date.now() / 1000)}:f>`
 					});
 
-					await this.updateActiveShiftDisplay(interaction.guildId!);
+					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId!);
 
 					const container = this.buildMultiSectionContainer('## parkFLOW Shift Action - Break Ended', [
 						'You have __ended__ your break.',
@@ -507,7 +448,7 @@ export class ShiftCommand extends Subcommand {
 						Started: `<t:${Math.floor(Date.now() / 1000)}:f>`
 					});
 
-					await this.updateActiveShiftDisplay(interaction.guildId!);
+					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId!);
 
 					const container = this.buildMultiSectionContainer('## parkFLOW Shift Action - Break Started', [
 						'You have __started__ your break.',
@@ -964,7 +905,7 @@ export class ShiftCommand extends Subcommand {
 
 					await this.logToShiftChannel(interaction.guildId, logContainer);
 
-					await this.updateActiveShiftDisplay(interaction.guildId);
+					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId);
 
 					const container = new ContainerBuilder();
 					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Ended Shift`);
@@ -1006,7 +947,7 @@ export class ShiftCommand extends Subcommand {
 
 					await this.logToShiftChannel(interaction.guildId, logContainer);
 
-					await this.updateActiveShiftDisplay(interaction.guildId);
+					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId);
 
 					const container = new ContainerBuilder();
 					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Started Shift`);
@@ -1069,7 +1010,7 @@ export class ShiftCommand extends Subcommand {
 
 					await this.logToShiftChannel(interaction.guildId, logContainer);
 
-					await this.updateActiveShiftDisplay(interaction.guildId);
+					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId);
 
 					const container = new ContainerBuilder();
 					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Ended Break`);
@@ -1112,7 +1053,7 @@ export class ShiftCommand extends Subcommand {
 
 					await this.logToShiftChannel(interaction.guildId, logContainer);
 
-					await this.updateActiveShiftDisplay(interaction.guildId);
+					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId);
 
 					const container = new ContainerBuilder();
 					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Started Break`);
