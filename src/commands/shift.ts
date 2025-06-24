@@ -159,6 +159,16 @@ export class ShiftCommand extends Subcommand {
 		}
 	}
 
+	private async getDisplayName(guildId: string, userId: string): Promise<string> {
+		try {
+			const guild = await this.container.client.guilds.fetch(guildId);
+			const member = await guild.members.fetch(userId);
+			return member.displayName;
+		} catch (error) {
+			return `<@${userId}>`;
+		}
+	}
+
 	private async logShiftAction(
 		guildId: string,
 		action:
@@ -671,9 +681,10 @@ export class ShiftCommand extends Subcommand {
 			}
 
 			if (shift.discord_id !== user.id || shift.guild_id !== interaction.guildId) {
+				const userDisplayName = await this.getDisplayName(interaction.guildId!, user.id);
 				const container = new ContainerBuilder();
 				const header = new TextDisplayBuilder().setContent(`## ❌ Invalid Shift Owner`);
-				const info = new TextDisplayBuilder().setContent(`Shift does not belong to ${user.tag} in this server.`);
+				const info = new TextDisplayBuilder().setContent(`Shift does not belong to ${userDisplayName} in this server.`);
 
 				container.addTextDisplayComponents(header);
 				container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
@@ -688,14 +699,16 @@ export class ShiftCommand extends Subcommand {
 			if (action === 'delete') {
 				Database.shifts.delete(shiftId);
 
+				const userDisplayName = await this.getDisplayName(interaction.guildId!, user.id);
+				const actionByDisplayName = await this.getDisplayName(interaction.guildId!, interaction.user.id);
 				const container = new ContainerBuilder();
 				const header = new TextDisplayBuilder().setContent(`## 🗑️ Shift Deleted`);
 				const info = new TextDisplayBuilder().setContent(
 					[
-						`**Target User:** ${user.tag}`,
+						`**Target User:** ${userDisplayName}`,
 						`**Shift ID:** ${shiftId}`,
 						`**Reason:** ${reason}`,
-						`**Action By:** ${interaction.user.tag}`
+						`**Action By:** ${actionByDisplayName}`
 					].join('\n')
 				);
 
@@ -746,16 +759,18 @@ export class ShiftCommand extends Subcommand {
 			const hours = Math.floor(effectiveDuration / 3600);
 			const mins = Math.floor((effectiveDuration % 3600) / 60);
 
+			const userDisplayName = await this.getDisplayName(interaction.guildId!, user.id);
+			const actionByDisplayName = await this.getDisplayName(interaction.guildId!, interaction.user.id);
 			const container = new ContainerBuilder();
 			const header = new TextDisplayBuilder().setContent(`## ⚙️ Shift Adjusted`);
 			const info = new TextDisplayBuilder().setContent(
 				[
-					`**Target User:** ${user.tag}`,
+					`**Target User:** ${userDisplayName}`,
 					`**Shift ID:** ${shiftId}`,
 					`**Adjustment:** ${action === 'add' ? '+' : '-'}${minutes} minutes`,
 					`**New Duration:** ${hours}h ${mins}m`,
 					`**Reason:** ${reason}`,
-					`**Action By:** ${interaction.user.tag}`
+					`**Action By:** ${actionByDisplayName}`
 				].join('\n')
 			);
 
@@ -826,10 +841,11 @@ export class ShiftCommand extends Subcommand {
 			const uniqueUsers = new Set(currentWeekShifts.map((shift) => shift.discord_id));
 			const deletedCount = Database.shifts.clearWeeklyShifts(interaction.guildId);
 
+			const resetByDisplayName = await this.getDisplayName(interaction.guildId, interaction.user.id);
 			const container = new ContainerBuilder();
 			const header = new TextDisplayBuilder().setContent(`## ✅ Weekly Reset Complete`);
 			const info = new TextDisplayBuilder().setContent(
-				[`**Shifts Deleted:** ${deletedCount}`, `**Users Affected:** ${uniqueUsers.size}`, `**Reset By:** ${interaction.user.tag}`].join('\n')
+				[`**Shifts Deleted:** ${deletedCount}`, `**Users Affected:** ${uniqueUsers.size}`, `**Reset By:** ${resetByDisplayName}`].join('\n')
 			);
 
 			container.addTextDisplayComponents(header);
@@ -885,14 +901,16 @@ export class ShiftCommand extends Subcommand {
 					const hours = Math.floor(effectiveDuration / 3600);
 					const minutes = Math.floor((effectiveDuration % 3600) / 60);
 
+					const userDisplayName = await this.getDisplayName(interaction.guildId, user.id);
+					const actionByDisplayName = await this.getDisplayName(interaction.guildId, interaction.user.id);
 					const logContainer = new ContainerBuilder();
 					const logHeader = new TextDisplayBuilder().setContent(`## 🔴 Force Ended Shift`);
 					const logInfo = new TextDisplayBuilder().setContent(
 						[
-							`**User:** ${user.tag} (${user.id})`,
+							`**User:** ${userDisplayName} (${user.id})`,
 							`**Duration:** ${hours}h ${minutes}m`,
 							`**Reason:** ${reason}`,
-							`**Force Toggled By:** ${interaction.user.tag} (${interaction.user.id})`,
+							`**Force Toggled By:** ${actionByDisplayName} (${interaction.user.id})`,
 							`**Shift ID:** ${activeShift.id}`,
 							`**Started:** <t:${activeShift.start_time}:f>`,
 							`**Ended:** <t:${Math.floor(Date.now() / 1000)}:f>`
@@ -911,10 +929,10 @@ export class ShiftCommand extends Subcommand {
 					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Ended Shift`);
 					const info = new TextDisplayBuilder().setContent(
 						[
-							`**Target User:** ${user.tag}`,
+							`**Target User:** ${userDisplayName}`,
 							`**Duration:** ${hours}h ${minutes}m`,
 							`**Reason:** ${reason}`,
-							`**Action By:** ${interaction.user.tag}`
+							`**Action By:** ${actionByDisplayName}`
 						].join('\n')
 					);
 
@@ -929,13 +947,15 @@ export class ShiftCommand extends Subcommand {
 				} else {
 					const newShift = Database.shifts.startShift(user.id, interaction.guildId);
 
+					const userDisplayName = await this.getDisplayName(interaction.guildId, user.id);
+					const actionByDisplayName = await this.getDisplayName(interaction.guildId, interaction.user.id);
 					const logContainer = new ContainerBuilder();
 					const logHeader = new TextDisplayBuilder().setContent(`## 🟢 Force Started Shift`);
 					const logInfo = new TextDisplayBuilder().setContent(
 						[
-							`**User:** ${user.tag} (${user.id})`,
+							`**User:** ${userDisplayName} (${user.id})`,
 							`**Reason:** ${reason}`,
-							`**Force Toggled By:** ${interaction.user.tag} (${interaction.user.id})`,
+							`**Force Toggled By:** ${actionByDisplayName} (${interaction.user.id})`,
 							`**Shift ID:** ${newShift.id}`,
 							`**Started:** <t:${Math.floor(Date.now() / 1000)}:f>`
 						].join('\n')
@@ -952,7 +972,7 @@ export class ShiftCommand extends Subcommand {
 					const container = new ContainerBuilder();
 					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Started Shift`);
 					const info = new TextDisplayBuilder().setContent(
-						[`**Target User:** ${user.tag}`, `**Reason:** ${reason}`, `**Action By:** ${interaction.user.tag}`].join('\n')
+						[`**Target User:** ${userDisplayName}`, `**Reason:** ${reason}`, `**Action By:** ${actionByDisplayName}`].join('\n')
 					);
 
 					container.addTextDisplayComponents(header);
@@ -968,9 +988,10 @@ export class ShiftCommand extends Subcommand {
 				const activeShift = Database.shifts.findActiveShift(user.id, interaction.guildId);
 
 				if (!activeShift) {
+					const userDisplayName = await this.getDisplayName(interaction.guildId, user.id);
 					const container = new ContainerBuilder();
 					const header = new TextDisplayBuilder().setContent(`## ❌ No Active Shift`);
-					const info = new TextDisplayBuilder().setContent(`${user.tag} does not have an active shift to take a break from.`);
+					const info = new TextDisplayBuilder().setContent(`${userDisplayName} does not have an active shift to take a break from.`);
 
 					container.addTextDisplayComponents(header);
 					container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
@@ -990,14 +1011,16 @@ export class ShiftCommand extends Subcommand {
 					const hours = Math.floor(duration / 3600);
 					const minutes = Math.floor((duration % 3600) / 60);
 
+					const userDisplayName = await this.getDisplayName(interaction.guildId, user.id);
+					const actionByDisplayName = await this.getDisplayName(interaction.guildId, interaction.user.id);
 					const logContainer = new ContainerBuilder();
 					const logHeader = new TextDisplayBuilder().setContent(`## 🟠 Force Ended Break`);
 					const logInfo = new TextDisplayBuilder().setContent(
 						[
-							`**User:** ${user.tag} (${user.id})`,
+							`**User:** ${userDisplayName} (${user.id})`,
 							`**Duration:** ${hours}h ${minutes}m`,
 							`**Reason:** ${reason}`,
-							`**Force Toggled By:** ${interaction.user.tag} (${interaction.user.id})`,
+							`**Force Toggled By:** ${actionByDisplayName} (${interaction.user.id})`,
 							`**Break ID:** ${activeBreak.id}`,
 							`**Started:** <t:${activeBreak.start_time}:f>`,
 							`**Ended:** <t:${Math.floor(Date.now() / 1000)}:f>`
@@ -1016,10 +1039,10 @@ export class ShiftCommand extends Subcommand {
 					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Ended Break`);
 					const info = new TextDisplayBuilder().setContent(
 						[
-							`**Target User:** ${user.tag}`,
+							`**Target User:** ${userDisplayName}`,
 							`**Duration:** ${hours}h ${minutes}m`,
 							`**Reason:** ${reason}`,
-							`**Action By:** ${interaction.user.tag}`
+							`**Action By:** ${actionByDisplayName}`
 						].join('\n')
 					);
 
@@ -1034,13 +1057,15 @@ export class ShiftCommand extends Subcommand {
 				} else {
 					const newBreak = Database.breaks.startBreak(activeShift.id, user.id, interaction.guildId);
 
+					const userDisplayName = await this.getDisplayName(interaction.guildId, user.id);
+					const actionByDisplayName = await this.getDisplayName(interaction.guildId, interaction.user.id);
 					const logContainer = new ContainerBuilder();
 					const logHeader = new TextDisplayBuilder().setContent(`## 🟡 Force Started Break`);
 					const logInfo = new TextDisplayBuilder().setContent(
 						[
-							`**User:** ${user.tag} (${user.id})`,
+							`**User:** ${userDisplayName} (${user.id})`,
 							`**Reason:** ${reason}`,
-							`**Force Toggled By:** ${interaction.user.tag} (${interaction.user.id})`,
+							`**Force Toggled By:** ${actionByDisplayName} (${interaction.user.id})`,
 							`**Break ID:** ${newBreak.id}`,
 							`**Shift ID:** ${activeShift.id}`,
 							`**Started:** <t:${Math.floor(Date.now() / 1000)}:f>`
@@ -1058,7 +1083,7 @@ export class ShiftCommand extends Subcommand {
 					const container = new ContainerBuilder();
 					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Started Break`);
 					const info = new TextDisplayBuilder().setContent(
-						[`**Target User:** ${user.tag}`, `**Reason:** ${reason}`, `**Action By:** ${interaction.user.tag}`].join('\n')
+						[`**Target User:** ${userDisplayName}`, `**Reason:** ${reason}`, `**Action By:** ${actionByDisplayName}`].join('\n')
 					);
 
 					container.addTextDisplayComponents(header);
@@ -1134,11 +1159,12 @@ export class ShiftCommand extends Subcommand {
 				const weekLabel = weekOffset === 0 ? 'Current Week' : weekOffset === -1 ? 'Last Week' : `${Math.abs(weekOffset)} Weeks Ago`;
 				const sortedUsers = Array.from(userStats.entries()).sort((a, b) => b[1].totalTime - a[1].totalTime);
 
-				const lines = sortedUsers.slice(0, 10).map(([userId, stats], index) => {
+				const lines = await Promise.all(sortedUsers.slice(0, 10).map(async ([userId, stats], index) => {
+					const displayName = await this.getDisplayName(interaction.guildId!, userId);
 					const hours = Math.floor(stats.totalTime / 3600);
 					const minutes = Math.floor((stats.totalTime % 3600) / 60);
-					return `${index + 1}. <@${userId}> - ${hours}h ${minutes}m (${stats.shifts} shifts)`;
-				});
+					return `${index + 1}. ${displayName} - ${hours}h ${minutes}m (${stats.shifts} shifts)`;
+				}));
 
 				const totalShifts = Array.from(userStats.values()).reduce((sum, stats) => sum + stats.shifts, 0);
 
@@ -1215,8 +1241,9 @@ export class ShiftCommand extends Subcommand {
 					return `${shiftStatus} ${date} - ${hours}h ${minutes}m (ID: ${shift.id})`;
 				});
 
+				const userDisplayName = await this.getDisplayName(interaction.guildId!, user.id);
 				const container = new ContainerBuilder();
-				const header = new TextDisplayBuilder().setContent(`## 👤 User Details - ${user.displayName}`);
+				const header = new TextDisplayBuilder().setContent(`## 👤 User Details - ${userDisplayName}`);
 				const statusInfo = new TextDisplayBuilder().setContent(`**Current Status:** ${status}`);
 				const weekInfo = new TextDisplayBuilder().setContent(
 					[
