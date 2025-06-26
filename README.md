@@ -15,16 +15,19 @@ A Discord bot for shift logging and department action management designed for la
 ## Commands
 
 ### Self Commands (Available to all staff)
+
 - `/shift self toggle` - Clock in/out of shifts or start/end breaks
 - `/shift self view` - View your logged time, last shift, or all shifts
 
 ### Department Commands (Admin Only)
+
 - `/shift department adjust` - Modify user shift times or delete shifts
 - `/shift department reset` - Clear weekly shift data
 - `/shift department toggle` - Force toggle user shifts/breaks
 - `/shift department view` - View department or specific user shifts
 
 ### Setup Commands (Admin Only)
+
 - `/server-setup` - Configure bot channels and roles for your server
 
 ## White-Label Customization
@@ -41,17 +44,20 @@ See [CONFIGURATION.md](CONFIGURATION.md) for detailed customization instructions
 ## Installation & Setup
 
 ### Prerequisites
+
 - Node.js (version 18 or higher)
 - npm
 - A Discord bot token
 
 ### 1. Clone the Repository
+
 ```bash
 git clone https://github.com/your-username/parkFLOW.git
 cd parkFLOW
 ```
 
 ### 2. Install Dependencies
+
 ```bash
 npm install
 ```
@@ -59,28 +65,34 @@ npm install
 ### 3. Configuration
 
 #### Environment Setup
+
 Create a `.env` file in the `src/` directory:
+
 ```env
 DISCORD_TOKEN=your_bot_token_here
 ```
 
 #### White-Label Setup (Optional)
+
 Customize the `config/branding.json` file for your organization. The default configuration is set up for park/county services, but you can easily adapt it for police, fire, security, or any other service organization. See [CONFIGURATION.md](CONFIGURATION.md) for examples.
 
 ### 4. Build and Run
 
 #### Development Mode
+
 ```bash
 npm run dev
 ```
 
 #### Production Mode
+
 ```bash
 npm run build
 npm start
 ```
 
 #### Development with Auto-Restart
+
 ```bash
 npm run watch:start
 ```
@@ -88,25 +100,27 @@ npm run watch:start
 ## Bot Setup in Discord
 
 1. **Invite the bot** to your Discord server with the following permissions:
-   - Send Messages
-   - Use Slash Commands
-   - Embed Links
-   - Read Message History
-   - Manage Messages
+
+    - Send Messages
+    - Use Slash Commands
+    - Embed Links
+    - Read Message History
+    - Manage Messages
 
 2. **Configure the bot** using `/server-setup` command to set:
-   - Action logs channel
-   - Shift logs channel
-   - Active shift display channel
-   - LOA request channel
-   - Staff access role
-   - Admin role
+    - Action logs channel
+    - Shift logs channel
+    - Active shift display channel
+    - LOA request channel
+    - Staff access role
+    - Admin role
 
 ## Database
 
 The bot uses SQLite with better-sqlite3 for local data persistence. The database file is automatically created in the `data/` directory on first run.
 
 ### Database Tables
+
 - `guild_settings` - Per-server configuration (log channels, roles)
 - `shifts` - Work shift tracking with automatic cleanup after 10 weeks
 - `actions` - Timed departmental actions with automatic expiration
@@ -115,6 +129,7 @@ The bot uses SQLite with better-sqlite3 for local data persistence. The database
 ## Architecture
 
 Built with the [Sapphire Framework](https://github.com/sapphiredev/framework) for Discord.js, featuring:
+
 - Automatic command registration and loading
 - Role-based permissions system
 - Real-time shift tracking with periodic updates
@@ -124,6 +139,7 @@ Built with the [Sapphire Framework](https://github.com/sapphiredev/framework) fo
 ## Development
 
 ### Project Structure
+
 ```
 src/
 ├── commands/           # Slash commands and context menus
@@ -140,6 +156,7 @@ src/
 ```
 
 ### Available Scripts
+
 - `npm run build` - Compile TypeScript to JavaScript
 - `npm run watch` - Build and watch for changes
 - `npm start` - Run in production mode
@@ -149,7 +166,9 @@ src/
 - `npm run generate` - Generate new commands/listeners with Sapphire CLI
 
 ### Code Quality
+
 The project uses:
+
 - TypeScript with strict configuration
 - Prettier for code formatting
 - Sapphire's recommended configurations
@@ -173,8 +192,9 @@ You are free to use, modify, and distribute this software. Credit to the origina
 ## Support
 
 For issues, feature requests, or questions:
+
 - Open an issue on GitHub
 
 ## Credits
 
-Originally developed for Clark County / Mayflower groups. Built with the Sapphire Framework and Discord.js.
+Originally developed for Clark County / Mayflower groups (Primarily, Mayflower Parks and Wildlife, hence the name "parkFLOW"). Built with the Sapphire Framework and Discord.js.
