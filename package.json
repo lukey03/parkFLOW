@@ -33,9 +33,10 @@
     "generate": "sapphire generate",
     "build": "tsc",
     "watch": "tsc -w",
-    "start": "NODE_ENV=production node dist/index.js",
-    "dev": "NODE_ENV=development npm run build && npm run start",
-    "watch:start": "NODE_ENV=development tsc-watch --onSuccess \"npm run start\"",
+    "internalstart": "node dist/index.js",
+    "start": "NODE_ENV=production npm run internalstart",
+    "dev": "NODE_ENV=development npm run build && npm run internalstart",
+    "watch:start": "NODE_ENV=development tsc-watch --onSuccess \"npm run internalstart\"",
     "format": "prettier --write \"src/\""
   },
   "prettier": "@sapphire/prettier-config"
