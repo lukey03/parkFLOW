@@ -7,7 +7,7 @@ export class TaskManager {
 	private activeShiftUpdateInterval: NodeJS.Timeout | null = null;
 	private client: SapphireClient | null = null;
 
-	private constructor() { }
+	private constructor() {}
 
 	public static getInstance(): TaskManager {
 		if (!TaskManager.instance) {
@@ -106,7 +106,11 @@ export class TaskManager {
 
 			const container = this.buildContainer(
 				'## 🕐 Active Shifts',
-				[`**${activeShifts.length} employee${activeShifts.length !== 1 ? 's' : ''} currently active in the County:**`, '', ...shiftLines].join('\n')
+				[
+					`**${activeShifts.length} employee${activeShifts.length !== 1 ? 's' : ''} currently active in the County:**`,
+					'',
+					...shiftLines
+				].join('\n')
 			);
 
 			await this.sendOrUpdateActiveShiftMessage(channel as TextChannel, container);
