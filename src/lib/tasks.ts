@@ -7,7 +7,7 @@ export class TaskManager {
 	private activeShiftUpdateInterval: NodeJS.Timeout | null = null;
 	private client: SapphireClient | null = null;
 
-	private constructor() {}
+	private constructor() { }
 
 	public static getInstance(): TaskManager {
 		if (!TaskManager.instance) {
@@ -75,7 +75,7 @@ export class TaskManager {
 			const activeShifts = Database.shifts.findActiveShifts(guildId);
 
 			if (activeShifts.length === 0) {
-				const container = this.buildContainer('## 🕐 Active Shifts', '_No users are currently on shift._');
+				const container = this.buildContainer('## 🕐 Active Shifts', '_No employees are currently active in the County._');
 				await this.sendOrUpdateActiveShiftMessage(channel as TextChannel, container);
 				return;
 			}
@@ -106,7 +106,7 @@ export class TaskManager {
 
 			const container = this.buildContainer(
 				'## 🕐 Active Shifts',
-				[`**${activeShifts.length} user${activeShifts.length !== 1 ? 's' : ''} currently on shift:**`, '', ...shiftLines].join('\n')
+				[`**${activeShifts.length} employee${activeShifts.length !== 1 ? 's' : ''} currently active in the County:**`, '', ...shiftLines].join('\n')
 			);
 
 			await this.sendOrUpdateActiveShiftMessage(channel as TextChannel, container);
@@ -147,8 +147,19 @@ export class TaskManager {
 	}
 
 	private formatDurationString(seconds: number): string {
-		const hours = Math.floor(seconds / 3600);
+		const months = Math.floor(seconds / (30 * 24 * 3600));
+		const days = Math.floor((seconds % (30 * 24 * 3600)) / (24 * 3600));
+		const hours = Math.floor((seconds % (24 * 3600)) / 3600);
 		const minutes = Math.floor((seconds % 3600) / 60);
-		return `${hours}h ${minutes}m`;
+
+		const parts: string[] = [];
+		if (months > 0) parts.push(`${months}mo`);
+		if (days > 0) parts.push(`${days}d`);
+		if (hours > 0) parts.push(`${hours}h`);
+		if (minutes > 0) parts.push(`${minutes}m`);
+
+		if (parts.length === 0) parts.push('0m');
+
+		return parts.join(' ');
 	}
 }
