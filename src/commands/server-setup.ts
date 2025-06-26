@@ -44,7 +44,11 @@ export class ServerSetupCommand extends Command {
 				.setName(this.name)
 				.setDescription(this.description)
 				.addChannelOption((option) =>
-					option.setName('action-logs-channel').setDescription('Channel for action expiration logs (unused, feature in dev)').addChannelTypes(0).setRequired(false)
+					option
+						.setName('action-logs-channel')
+						.setDescription('Channel for action expiration logs (unused, feature in dev)')
+						.addChannelTypes(0)
+						.setRequired(false)
 				)
 				.addChannelOption((option) =>
 					option.setName('shift-logs-channel').setDescription('Channel for shift logs').addChannelTypes(0).setRequired(false)
