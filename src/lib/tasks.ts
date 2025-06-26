@@ -1,6 +1,7 @@
 import type { SapphireClient } from '@sapphire/framework';
 import { Database } from './database';
 import { ContainerBuilder, TextDisplayBuilder, SeparatorSpacingSize, TextChannel } from 'discord.js';
+import { Config } from './config';
 
 export class TaskManager {
 	private static instance: TaskManager;
@@ -75,7 +76,7 @@ export class TaskManager {
 			const activeShifts = Database.shifts.findActiveShifts(guildId);
 
 			if (activeShifts.length === 0) {
-				const container = this.buildContainer('## 🕐 Active Shifts', '_No employees are currently active in the County._');
+				const container = this.buildContainer(`## ${Config.ui.active_shifts_header}`, `_${Config.getActiveSummaryText(0)}_`);
 				await this.sendOrUpdateActiveShiftMessage(channel as TextChannel, container);
 				return;
 			}
@@ -105,9 +106,9 @@ export class TaskManager {
 			}
 
 			const container = this.buildContainer(
-				'## 🕐 Active Shifts',
+				`## ${Config.ui.active_shifts_header}`,
 				[
-					`**${activeShifts.length} employee${activeShifts.length !== 1 ? 's' : ''} currently active in the County:**`,
+					`**${Config.getActiveSummaryText(activeShifts.length)}**`,
 					'',
 					...shiftLines
 				].join('\n')

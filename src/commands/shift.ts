@@ -4,10 +4,11 @@ import { MessageFlags, ContainerBuilder, TextDisplayBuilder, SeparatorSpacingSiz
 import { Subcommand } from '@sapphire/plugin-subcommands';
 import { Database } from '../lib/database';
 import { TaskManager } from '../lib/tasks';
+import { Config } from '../lib/config';
 
 @ApplyOptions<Subcommand.Options>({
-	name: 'shift',
-	description: 'yea',
+	name: Config.org.shift_term,
+	description: Config.formatText(Config.ui.commands.shift_main_description),
 	preconditions: ['StaffAccess'],
 	subcommands: [
 		{
@@ -93,6 +94,10 @@ export class ShiftCommand extends Subcommand {
 		} catch {
 			return false;
 		}
+	}
+
+	private getUnitChoices() {
+		return Config.units.map(unit => ({ name: unit.name, value: unit.code }));
 	}
 
 	private buildContainer(header: string, content: string): ContainerBuilder {
@@ -248,7 +253,7 @@ export class ShiftCommand extends Subcommand {
 				.addSubcommandGroup((group) =>
 					group
 						.setName('self')
-						.setDescription('ok')
+						.setDescription(Config.formatText(Config.ui.commands.shift_self_description))
 						.addSubcommand((subcommand) =>
 							subcommand
 								.setName('toggle')
@@ -265,14 +270,7 @@ export class ShiftCommand extends Subcommand {
 									option
 										.setName('unit')
 										.setDescription('unit to shift as (required when starting shift)')
-										.addChoices(
-											{ name: 'Park Ranger', value: 'PAW' },
-											{ name: 'Wildfire and Rescue', value: 'WFR' },
-											{ name: 'Natural Resource Enforcement Bureau', value: 'NREB' },
-											{ name: 'Crisis Response Team', value: 'CRT' },
-											{ name: 'Nopyfruit Enforcement Team', value: 'NET' },
-											{ name: 'Air Support Unit', value: 'ASU' }
-										)
+										.addChoices(...this.getUnitChoices())
 								)
 						)
 						.addSubcommand((subcommand) =>
@@ -294,14 +292,7 @@ export class ShiftCommand extends Subcommand {
 									option
 										.setName('unit')
 										.setDescription('filter by unit')
-										.addChoices(
-											{ name: 'Park Ranger', value: 'PAW' },
-											{ name: 'Wildfire and Rescue', value: 'WFR' },
-											{ name: 'Natural Resource Enforcement Bureau', value: 'NREB' },
-											{ name: 'Crisis Response Team', value: 'CRT' },
-											{ name: 'Nopyfruit Enforcement Team', value: 'NET' },
-											{ name: 'Air Support Unit', value: 'ASU' }
-										)
+										.addChoices(...this.getUnitChoices())
 								)
 						)
 				)
@@ -380,14 +371,7 @@ export class ShiftCommand extends Subcommand {
 									option
 										.setName('unit')
 										.setDescription('filter by unit')
-										.addChoices(
-											{ name: 'Park Ranger', value: 'PAW' },
-											{ name: 'Wildfire and Rescue', value: 'WFR' },
-											{ name: 'Natural Resource Enforcement Bureau', value: 'NREB' },
-											{ name: 'Crisis Response Team', value: 'CRT' },
-											{ name: 'Nopyfruit Enforcement Team', value: 'NET' },
-											{ name: 'Air Support Unit', value: 'ASU' }
-										)
+										.addChoices(...this.getUnitChoices())
 								)
 						)
 				)

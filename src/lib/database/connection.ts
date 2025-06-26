@@ -1,6 +1,7 @@
 import Database from 'better-sqlite3';
 import { join } from 'node:path';
 import { existsSync, mkdirSync } from 'node:fs';
+import { Config } from '../config';
 
 class DatabaseManager {
 	private static instance: DatabaseManager;
@@ -27,7 +28,7 @@ class DatabaseManager {
 			mkdirSync(dbDirectory, { recursive: true });
 		}
 
-		const dbFile = join(dbDirectory, 'parkflow.db');
+		const dbFile = join(dbDirectory, Config.app.database_filename);
 
 		this.db = new Database(dbFile);
 		this.db.pragma('journal_mode = WAL');

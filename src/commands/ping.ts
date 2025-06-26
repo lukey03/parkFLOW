@@ -1,6 +1,7 @@
 import { ApplyOptions } from '@sapphire/decorators';
 import { Command } from '@sapphire/framework';
 import { ApplicationIntegrationType, InteractionContextType, ContainerBuilder, MessageFlags, TextDisplayBuilder } from 'discord.js';
+import { Config } from '../lib/config';
 
 @ApplyOptions<Command.Options>({
 	description: 'Pong!'
@@ -25,7 +26,7 @@ export class UserCommand extends Command {
 	private async sendPing(interaction: Command.ChatInputCommandInteraction) {
 		const pingContainer = new ContainerBuilder();
 
-		const header = new TextDisplayBuilder().setContent('## Pinging parkFLOW... 🏓');
+		const header = new TextDisplayBuilder().setContent(`## ${Config.formatText(Config.ui.commands.ping_header)}`);
 
 		pingContainer.addTextDisplayComponents(header);
 

@@ -9,9 +9,10 @@ import {
 	SeparatorSpacingSize
 } from 'discord.js';
 import { Database } from '../lib/database';
+import { Config } from '../lib/config';
 
 @ApplyOptions<Command.Options>({
-	description: 'Configure server settings for parkFLOW bot',
+	description: Config.formatText(Config.ui.commands.server_setup_description),
 	requiredUserPermissions: ['ManageGuild', 'Administrator']
 })
 export class ServerSetupCommand extends Command {

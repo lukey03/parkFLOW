@@ -27,6 +27,17 @@ A Discord bot for shift logging and department action management designed for la
 ### Setup Commands (Admin Only)
 - `/server-setup` - Configure bot channels and roles for your server
 
+## White-Label Customization
+
+parkFLOW can be easily customized for different organizations by modifying the `config/branding.json` file. You can change:
+
+- **Organization terminology** (employee, department, shift terms)
+- **Unit/department names and codes**
+- **Application branding and database names**
+- **UI text and messages**
+
+See [CONFIGURATION.md](CONFIGURATION.md) for detailed customization instructions and examples for police departments, fire departments, corporate security, and more.
+
 ## Installation & Setup
 
 ### Prerequisites
@@ -45,11 +56,16 @@ cd parkFLOW
 npm install
 ```
 
-### 3. Environment Configuration
+### 3. Configuration
+
+#### Environment Setup
 Create a `.env` file in the `src/` directory:
 ```env
 DISCORD_TOKEN=your_bot_token_here
 ```
+
+#### White-Label Setup (Optional)
+Customize the `config/branding.json` file for your organization. The default configuration is set up for park/county services, but you can easily adapt it for police, fire, security, or any other service organization. See [CONFIGURATION.md](CONFIGURATION.md) for examples.
 
 ### 4. Build and Run
 
