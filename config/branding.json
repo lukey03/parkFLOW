@@ -12,6 +12,7 @@
 		"active_term": "active"
 	},
 	"units": [
+		{ "name": "Volunteer", "code": "VOL" },
 		{ "name": "Park Ranger", "code": "PAW" },
 		{ "name": "Wildfire and Rescue", "code": "WFR" },
 		{ "name": "Natural Resource Enforcement Bureau", "code": "NREB" },
