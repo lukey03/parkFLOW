@@ -110,16 +110,18 @@ export class TaskManager {
 
 			const timestamp = Math.floor(Date.now() / 1000);
 			const timestampText = `-# Last updated <t:${timestamp}:R>`;
-			
+
 			const { displayLines, totalCount, displayCount } = this.truncateShiftLines(shiftLines, activeShifts.length, timestampText);
-			
+
 			const content = [
 				`**${Config.getActiveSummaryText(totalCount)}**`,
 				displayCount < totalCount ? `_Showing ${displayCount} of ${totalCount}_` : '',
 				'',
 				...displayLines
-			].filter(line => line !== '').join('\n');
-			
+			]
+				.filter((line) => line !== '')
+				.join('\n');
+
 			const container = this.buildActiveShiftContainer(`## ${Config.ui.active_shifts_header}`, content, timestampText);
 
 			await this.sendOrUpdateActiveShiftMessage(channel as TextChannel, container);
@@ -162,32 +164,36 @@ export class TaskManager {
 		return container;
 	}
 
-	private truncateShiftLines(shiftLines: string[], totalCount: number, timestampText: string): { displayLines: string[]; totalCount: number; displayCount: number } {
+	private truncateShiftLines(
+		shiftLines: string[],
+		totalCount: number,
+		timestampText: string
+	): { displayLines: string[]; totalCount: number; displayCount: number } {
 		const MAX_CONTENT_LENGTH = 1800; // Conservative limit to leave room for header and timestamp
-		
+
 		const baseContent = [
 			`**${Config.getActiveSummaryText(totalCount)}**`,
 			`_Showing ${totalCount} of ${totalCount}_`, // Worst case scenario for length calculation
 			''
 		].join('\n');
-		
+
 		const baseLength = baseContent.length + timestampText.length + 100; // Buffer for separators and spacing
 		let availableLength = MAX_CONTENT_LENGTH - baseLength;
-		
+
 		const displayLines: string[] = [];
 		let currentLength = 0;
-		
+
 		for (const line of shiftLines) {
 			const lineLength = line.length + 1; // +1 for newline
-			
+
 			if (currentLength + lineLength > availableLength) {
 				break;
 			}
-			
+
 			displayLines.push(line);
 			currentLength += lineLength;
 		}
-		
+
 		return {
 			displayLines,
 			totalCount,

@@ -97,7 +97,7 @@ export class ShiftCommand extends Subcommand {
 	}
 
 	private getUnitChoices() {
-		return Config.units.map(unit => ({ name: unit.name, value: unit.code }));
+		return Config.units.map((unit) => ({ name: unit.name, value: unit.code }));
 	}
 
 	private buildContainer(header: string, content: string): ContainerBuilder {
