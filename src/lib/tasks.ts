@@ -76,7 +76,10 @@ export class TaskManager {
 			const activeShifts = Database.shifts.findActiveShifts(guildId);
 
 			if (activeShifts.length === 0) {
-				const container = this.buildContainer(`## ${Config.ui.active_shifts_header}`, `_${Config.getActiveSummaryText(0)}_`);
+				const timestamp = Math.floor(Date.now() / 1000);
+				const content = `_${Config.getActiveSummaryText(0)}_`;
+				const timestampText = `-# Last updated <t:${timestamp}:R>`;
+				const container = this.buildActiveShiftContainer(`## ${Config.ui.active_shifts_header}`, content, timestampText);
 				await this.sendOrUpdateActiveShiftMessage(channel as TextChannel, container);
 				return;
 			}
@@ -105,14 +108,14 @@ export class TaskManager {
 				}
 			}
 
-			const container = this.buildContainer(
-				`## ${Config.ui.active_shifts_header}`,
-				[
-					`**${Config.getActiveSummaryText(activeShifts.length)}**`,
-					'',
-					...shiftLines
-				].join('\n')
-			);
+			const timestamp = Math.floor(Date.now() / 1000);
+			const content = [
+				`**${Config.getActiveSummaryText(activeShifts.length)}**`,
+				'',
+				...shiftLines
+			].join('\n');
+			const timestampText = `-# Last updated <t:${timestamp}:R>`;
+			const container = this.buildActiveShiftContainer(`## ${Config.ui.active_shifts_header}`, content, timestampText);
 
 			await this.sendOrUpdateActiveShiftMessage(channel as TextChannel, container);
 		} catch (error) {
@@ -139,14 +142,17 @@ export class TaskManager {
 		}
 	}
 
-	private buildContainer(header: string, content: string): ContainerBuilder {
+	private buildActiveShiftContainer(header: string, content: string, timestamp: string): ContainerBuilder {
 		const container = new ContainerBuilder();
 		const headerDisplay = new TextDisplayBuilder().setContent(header);
 		const contentDisplay = new TextDisplayBuilder().setContent(content);
+		const timestampDisplay = new TextDisplayBuilder().setContent(timestamp);
 
 		container.addTextDisplayComponents(headerDisplay);
 		container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 		container.addTextDisplayComponents(contentDisplay);
+		container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
+		container.addTextDisplayComponents(timestampDisplay);
 
 		return container;
 	}
