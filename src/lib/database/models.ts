@@ -19,6 +19,7 @@ export interface Shift {
 	guild_id: string;
 	start_time: number;
 	end_time?: number;
+	unit?: string;
 	created_at: number;
 	updated_at: number;
 }
@@ -108,14 +109,14 @@ export class ShiftModel {
 		this.db = dbManager.getDatabase();
 	}
 
-	public startShift(discordId: string, guildId: string): Shift {
+	public startShift(discordId: string, guildId: string, unit?: string): Shift {
 		const stmt = this.db.prepare(`
-			INSERT INTO shifts (discord_id, guild_id, start_time)
-			VALUES (?, ?, ?)
+			INSERT INTO shifts (discord_id, guild_id, start_time, unit)
+			VALUES (?, ?, ?, ?)
 		`);
 
 		const startTime = Math.floor(Date.now() / 1000);
-		const result = stmt.run(discordId, guildId, startTime);
+		const result = stmt.run(discordId, guildId, startTime, unit);
 		return this.findById(result.lastInsertRowid as number)!;
 	}
 
@@ -162,13 +163,21 @@ export class ShiftModel {
 		return stmt.get(discordId, guildId) as Shift | null;
 	}
 
-	public findActiveShifts(guildId: string): Shift[] {
-		const stmt = this.db.prepare(`
+	public findActiveShifts(guildId: string, unit?: string): Shift[] {
+		let query = `
 			SELECT * FROM shifts 
-			WHERE guild_id = ? AND end_time IS NULL 
-			ORDER BY start_time ASC
-		`);
-		return stmt.all(guildId) as Shift[];
+			WHERE guild_id = ? AND end_time IS NULL
+		`;
+		const params: any[] = [guildId];
+
+		if (unit) {
+			query += ` AND unit = ?`;
+			params.push(unit);
+		}
+
+		query += ` ORDER BY start_time ASC`;
+		const stmt = this.db.prepare(query);
+		return stmt.all(...params) as Shift[];
 	}
 
 	public getTotalSeconds(discordId: string, guildId: string, startDate?: number, endDate?: number): number {
@@ -290,6 +299,26 @@ export class ShiftModel {
 
 		stmt.run(newEndTime, id);
 		return this.findById(id);
+	}
+
+	public getShiftsByUnit(guildId: string, unit: string, limit?: number): Shift[] {
+		const query = limit
+			? 'SELECT * FROM shifts WHERE guild_id = ? AND unit = ? ORDER BY start_time DESC LIMIT ?'
+			: 'SELECT * FROM shifts WHERE guild_id = ? AND unit = ? ORDER BY start_time DESC';
+
+		const stmt = this.db.prepare(query);
+		const params = limit ? [guildId, unit, limit] : [guildId, unit];
+		return stmt.all(...params) as Shift[];
+	}
+
+	public getUnitsByGuild(guildId: string): string[] {
+		const stmt = this.db.prepare(`
+			SELECT DISTINCT unit FROM shifts 
+			WHERE guild_id = ? AND unit IS NOT NULL 
+			ORDER BY unit ASC
+		`);
+		const results = stmt.all(guildId) as { unit: string }[];
+		return results.map((row) => row.unit);
 	}
 }
 

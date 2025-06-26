@@ -63,16 +63,27 @@ export class ShiftCommand extends Subcommand {
 		return true;
 	}
 
-	private formatDuration(seconds: number): { hours: number; minutes: number } {
+	private formatDuration(seconds: number): { months: number; days: number; hours: number; minutes: number } {
 		return {
-			hours: Math.floor(seconds / 3600),
+			months: Math.floor(seconds / (30 * 24 * 3600)),
+			days: Math.floor((seconds % (30 * 24 * 3600)) / (24 * 3600)),
+			hours: Math.floor((seconds % (24 * 3600)) / 3600),
 			minutes: Math.floor((seconds % 3600) / 60)
 		};
 	}
 
 	private formatDurationString(seconds: number): string {
-		const { hours, minutes } = this.formatDuration(seconds);
-		return `${hours}h ${minutes}m`;
+		const { months, days, hours, minutes } = this.formatDuration(seconds);
+
+		const parts: string[] = [];
+		if (months > 0) parts.push(`${months}mo`);
+		if (days > 0) parts.push(`${days}d`);
+		if (hours > 0) parts.push(`${hours}h`);
+		if (minutes > 0) parts.push(`${minutes}m`);
+
+		if (parts.length === 0) parts.push('0m');
+
+		return parts.join(' ');
 	}
 
 	private isValidUrl(url: string): boolean {
@@ -229,7 +240,6 @@ export class ShiftCommand extends Subcommand {
 		}
 	}
 
-
 	public override registerApplicationCommands(registry: Command.Registry) {
 		registry.registerChatInputCommand((builder) =>
 			builder
@@ -251,6 +261,19 @@ export class ShiftCommand extends Subcommand {
 										.addChoices({ name: 'Shift', value: 'shift' }, { name: 'Break', value: 'break' })
 								)
 								.addStringOption((option) => option.setName('proof').setDescription('Proof of shift').setRequired(true))
+								.addStringOption((option) =>
+									option
+										.setName('unit')
+										.setDescription('unit to shift as (required when starting shift)')
+										.addChoices(
+											{ name: 'Park Ranger', value: 'PAW' },
+											{ name: 'Wildfire and Rescue', value: 'WFR' },
+											{ name: 'Natural Resource Enforcement Bureau', value: 'NREB' },
+											{ name: 'Crisis Response Team', value: 'CRT' },
+											{ name: 'Nopyfruit Enforcement Team', value: 'NET' },
+											{ name: 'Air Support Unit', value: 'ASU' }
+										)
+								)
 						)
 						.addSubcommand((subcommand) =>
 							subcommand
@@ -265,6 +288,19 @@ export class ShiftCommand extends Subcommand {
 											{ name: 'Logged Time', value: 'loggedtime' },
 											{ name: 'Last Shift', value: 'lastshift' },
 											{ name: 'All Shifts', value: 'allshifts' }
+										)
+								)
+								.addStringOption((option) =>
+									option
+										.setName('unit')
+										.setDescription('filter by unit')
+										.addChoices(
+											{ name: 'Park Ranger', value: 'PAW' },
+											{ name: 'Wildfire and Rescue', value: 'WFR' },
+											{ name: 'Natural Resource Enforcement Bureau', value: 'NREB' },
+											{ name: 'Crisis Response Team', value: 'CRT' },
+											{ name: 'Nopyfruit Enforcement Team', value: 'NET' },
+											{ name: 'Air Support Unit', value: 'ASU' }
 										)
 								)
 						)
@@ -340,6 +376,19 @@ export class ShiftCommand extends Subcommand {
 										.setMinValue(-3)
 										.setMaxValue(0)
 								)
+								.addStringOption((option) =>
+									option
+										.setName('unit')
+										.setDescription('filter by unit')
+										.addChoices(
+											{ name: 'Park Ranger', value: 'PAW' },
+											{ name: 'Wildfire and Rescue', value: 'WFR' },
+											{ name: 'Natural Resource Enforcement Bureau', value: 'NREB' },
+											{ name: 'Crisis Response Team', value: 'CRT' },
+											{ name: 'Nopyfruit Enforcement Team', value: 'NET' },
+											{ name: 'Air Support Unit', value: 'ASU' }
+										)
+								)
 						)
 				)
 		);
@@ -350,6 +399,7 @@ export class ShiftCommand extends Subcommand {
 
 		const type = interaction.options.getString('type', true);
 		const proof = interaction.options.getString('proof', true);
+		const unit = interaction.options.getString('unit');
 
 		if (!this.isValidUrl(proof)) {
 			const container = this.buildErrorContainer('Invalid Proof', 'Proof must be a valid URL.');
@@ -375,6 +425,7 @@ export class ShiftCommand extends Subcommand {
 					const breakTimeStr = this.formatDurationString(breakTime);
 
 					await this.logShiftAction(interaction.guildId!, 'shift-ended', interaction.user, {
+						Unit: activeShift.unit || 'N/A',
 						'Effective Duration': effectiveDurationStr,
 						'Break Time': breakTimeStr,
 						Proof: proof,
@@ -397,9 +448,15 @@ export class ShiftCommand extends Subcommand {
 
 					return this.replyWithContainer(interaction, container);
 				} else {
-					const newShift = Database.shifts.startShift(interaction.user.id, interaction.guildId!);
+					if (!unit) {
+						const container = this.buildErrorContainer('Unit Required', 'Please select a unit when starting your shift.');
+						return this.replyWithContainer(interaction, container);
+					}
+
+					const newShift = Database.shifts.startShift(interaction.user.id, interaction.guildId!, unit);
 
 					await this.logShiftAction(interaction.guildId!, 'shift-started', interaction.user, {
+						Unit: unit,
 						Proof: proof,
 						'Shift ID': newShift.id.toString(),
 						Started: `<t:${Math.floor(Date.now() / 1000)}:f>`
@@ -485,14 +542,16 @@ export class ShiftCommand extends Subcommand {
 		}
 
 		const type = interaction.options.getString('type', true);
+		const unitFilter = interaction.options.getString('unit');
 
 		try {
 			if (type === 'loggedtime') {
 				const allShifts = Database.shifts.findByDiscordId(interaction.user.id, interaction.guildId);
+				const filteredShifts = unitFilter ? allShifts.filter((shift) => shift.unit === unitFilter) : allShifts;
 				let totalEffectiveSeconds = 0;
 				let totalBreakSeconds = 0;
 
-				for (const shift of allShifts) {
+				for (const shift of filteredShifts) {
 					if (shift.end_time) {
 						const shiftDuration = Database.shifts.getShiftDuration(shift);
 						const breakTime = Database.breaks.getTotalBreakTimeForShift(shift.id);
@@ -510,9 +569,10 @@ export class ShiftCommand extends Subcommand {
 				const rawHours = Math.floor(totalRawSeconds / 3600);
 				const rawMinutes = Math.floor((totalRawSeconds % 3600) / 60);
 
+				const titleSuffix = unitFilter ? ` (${unitFilter})` : '';
 				const container = new ContainerBuilder();
 				const display = new TextDisplayBuilder().setContent(
-					`# 📊 Total Logged Time\n\n**Effective Work Time:** ${effectiveHours}h ${effectiveMinutes}m\n**Total Break Time:** ${breakHours}h ${breakMinutes}m\n**Raw Time:** ${rawHours}h ${rawMinutes}m`
+					`# 📊 Total Logged Time${titleSuffix}\n\n**Effective Work Time:** ${effectiveHours}h ${effectiveMinutes}m\n**Total Break Time:** ${breakHours}h ${breakMinutes}m\n**Raw Time:** ${rawHours}h ${rawMinutes}m`
 				);
 
 				container.addTextDisplayComponents(display);
@@ -522,8 +582,9 @@ export class ShiftCommand extends Subcommand {
 					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
 				});
 			} else if (type === 'lastshift') {
-				const shifts = Database.shifts.findByDiscordId(interaction.user.id, interaction.guildId, 1);
-				const lastShift = shifts[0];
+				const shifts = Database.shifts.findByDiscordId(interaction.user.id, interaction.guildId);
+				const filteredShifts = unitFilter ? shifts.filter((shift) => shift.unit === unitFilter) : shifts;
+				const lastShift = filteredShifts[0];
 
 				if (!lastShift) {
 					const container = new ContainerBuilder();
@@ -556,10 +617,12 @@ export class ShiftCommand extends Subcommand {
 
 				const activeBreak = lastShift.end_time ? null : Database.breaks.findActiveBreak(interaction.user.id, interaction.guildId);
 				const breakStatus = activeBreak ? ' (On Break)' : '';
+				const titleSuffix = unitFilter ? ` (${unitFilter})` : '';
+				const unitInfo = lastShift.unit ? `\n**Unit:** ${lastShift.unit}` : '';
 
 				const container = new ContainerBuilder();
 				const display = new TextDisplayBuilder().setContent(
-					`# ${status} Last Shift${breakStatus}\n\n**Started:** ${startTime}\n**Ended:** ${endTime}\n**Effective Duration:** ${effectiveHours}h ${effectiveMinutes}m\n**Break Time:** ${breakHours}h ${breakMinutes}m\n**Raw Duration:** ${rawHours}h ${rawMinutes}m`
+					`# ${status} Last Shift${breakStatus}${titleSuffix}${unitInfo}\n\n**Started:** ${startTime}\n**Ended:** ${endTime}\n**Effective Duration:** ${effectiveHours}h ${effectiveMinutes}m\n**Break Time:** ${breakHours}h ${breakMinutes}m\n**Raw Duration:** ${rawHours}h ${rawMinutes}m`
 				);
 
 				container.addTextDisplayComponents(display);
@@ -570,8 +633,9 @@ export class ShiftCommand extends Subcommand {
 				});
 			} else if (type === 'allshifts') {
 				const shifts = Database.shifts.findByDiscordId(interaction.user.id, interaction.guildId);
+				const filteredShifts = unitFilter ? shifts.filter((shift) => shift.unit === unitFilter) : shifts;
 
-				if (shifts.length === 0) {
+				if (filteredShifts.length === 0) {
 					const container = new ContainerBuilder();
 					const display = new TextDisplayBuilder().setContent(`# ❌ No Shifts Found\n\nYou have not logged any shifts yet.`);
 
@@ -583,7 +647,7 @@ export class ShiftCommand extends Subcommand {
 					});
 				}
 
-				const shiftLines = shifts.slice(0, 10).map((shift, index) => {
+				const shiftLines = filteredShifts.slice(0, 10).map((shift, index) => {
 					const startTime = `<t:${shift.start_time}:d>`;
 					const rawDuration = shift.end_time
 						? Math.floor(shift.end_time - shift.start_time)
@@ -597,16 +661,18 @@ export class ShiftCommand extends Subcommand {
 					const status = shift.end_time ? '✅' : '🔄';
 
 					const breakInfo = breakTime > 0 ? ` (${Math.floor(breakTime / 60)}m break)` : '';
+					const unitInfo = shift.unit ? ` [${shift.unit}]` : '';
 
-					return `**${index + 1}.** ${status} ${startTime} - **${effectiveHours}h ${effectiveMinutes}m**${breakInfo}`;
+					return `**${index + 1}.** ${status} ${startTime} - **${effectiveHours}h ${effectiveMinutes}m**${breakInfo}${unitInfo}`;
 				});
 
-				const totalCount = shifts.length;
+				const totalCount = filteredShifts.length;
 				const showing = Math.min(10, totalCount);
 
+				const titleSuffix = unitFilter ? ` (${unitFilter})` : '';
 				const container = new ContainerBuilder();
 				const display = new TextDisplayBuilder().setContent(
-					`# 📋 All Shifts (${showing}/${totalCount})\n\n${shiftLines.join('\n\n')}${totalCount > 10 ? '\n\n*Showing latest 10 shifts*' : ''}`
+					`# 📋 All Shifts${titleSuffix} (${showing}/${totalCount})\n\n${shiftLines.join('\n\n')}${totalCount > 10 ? '\n\n*Showing latest 10 shifts*' : ''}`
 				);
 
 				container.addTextDisplayComponents(display);
@@ -1138,13 +1204,15 @@ export class ShiftCommand extends Subcommand {
 		const type = interaction.options.getString('type', true);
 		const user = interaction.options.getUser('user');
 		const weekOffset = interaction.options.getInteger('week') ?? 0;
+		const unitFilter = interaction.options.getString('unit');
 
 		try {
 			if (type === 'department') {
 				const shifts = Database.shifts.getShiftsByWeek(interaction.guildId, weekOffset);
+				const filteredShifts = unitFilter ? shifts.filter((shift) => shift.unit === unitFilter) : shifts;
 				const userStats = new Map<string, { shifts: number; totalTime: number }>();
 
-				for (const shift of shifts) {
+				for (const shift of filteredShifts) {
 					if (shift.end_time) {
 						const existing = userStats.get(shift.discord_id) || { shifts: 0, totalTime: 0 };
 						const shiftDuration = Database.shifts.getShiftDuration(shift);
@@ -1157,19 +1225,22 @@ export class ShiftCommand extends Subcommand {
 				}
 
 				const weekLabel = weekOffset === 0 ? 'Current Week' : weekOffset === -1 ? 'Last Week' : `${Math.abs(weekOffset)} Weeks Ago`;
+				const unitLabel = unitFilter ? ` - ${unitFilter}` : '';
 				const sortedUsers = Array.from(userStats.entries()).sort((a, b) => b[1].totalTime - a[1].totalTime);
 
-				const lines = await Promise.all(sortedUsers.slice(0, 10).map(async ([userId, stats], index) => {
-					const displayName = await this.getDisplayName(interaction.guildId!, userId);
-					const hours = Math.floor(stats.totalTime / 3600);
-					const minutes = Math.floor((stats.totalTime % 3600) / 60);
-					return `${index + 1}. ${displayName} - ${hours}h ${minutes}m (${stats.shifts} shifts)`;
-				}));
+				const lines = await Promise.all(
+					sortedUsers.slice(0, 10).map(async ([userId, stats], index) => {
+						const displayName = await this.getDisplayName(interaction.guildId!, userId);
+						const hours = Math.floor(stats.totalTime / 3600);
+						const minutes = Math.floor((stats.totalTime % 3600) / 60);
+						return `${index + 1}. ${displayName} - ${hours}h ${minutes}m (${stats.shifts} shifts)`;
+					})
+				);
 
 				const totalShifts = Array.from(userStats.values()).reduce((sum, stats) => sum + stats.shifts, 0);
 
 				const container = new ContainerBuilder();
-				const header = new TextDisplayBuilder().setContent(`## 📊 Department Overview - ${weekLabel}`);
+				const header = new TextDisplayBuilder().setContent(`## 📊 Department Overview - ${weekLabel}${unitLabel}`);
 				const statsDisplay = new TextDisplayBuilder().setContent(
 					[
 						`**Active Users:** ${userStats.size}`,
@@ -1205,12 +1276,14 @@ export class ShiftCommand extends Subcommand {
 				}
 
 				const userShifts = Database.shifts.findByDiscordId(user.id, interaction.guildId, 5);
+				const filteredUserShifts = unitFilter ? userShifts.filter((shift) => shift.unit === unitFilter) : userShifts;
 				const weekShifts = Database.shifts.getShiftsByWeek(interaction.guildId, weekOffset).filter((s) => s.discord_id === user.id);
+				const filteredWeekShifts = unitFilter ? weekShifts.filter((shift) => shift.unit === unitFilter) : weekShifts;
 
 				let weeklyTime = 0;
 				let weeklyShiftCount = 0;
 
-				for (const shift of weekShifts) {
+				for (const shift of filteredWeekShifts) {
 					if (shift.end_time) {
 						const shiftDuration = Database.shifts.getShiftDuration(shift);
 						const breakTime = Database.breaks.getTotalBreakTimeForShift(shift.id);
@@ -1227,8 +1300,9 @@ export class ShiftCommand extends Subcommand {
 				const status = activeShift ? (activeBreak ? 'On Break' : 'Active Shift') : 'Off Shift';
 
 				const weekLabel = weekOffset === 0 ? 'Current Week' : weekOffset === -1 ? 'Last Week' : `${Math.abs(weekOffset)} Weeks Ago`;
+				const unitLabel = unitFilter ? ` - ${unitFilter}` : '';
 
-				const recentShifts = userShifts.slice(0, 3).map((shift) => {
+				const recentShifts = filteredUserShifts.slice(0, 3).map((shift) => {
 					const date = new Date(shift.start_time * 1000).toLocaleDateString();
 					const shiftDuration = Database.shifts.getShiftDuration(shift);
 					const breakTime = Database.breaks.getTotalBreakTimeForShift(shift.id);
@@ -1243,7 +1317,7 @@ export class ShiftCommand extends Subcommand {
 
 				const userDisplayName = await this.getDisplayName(interaction.guildId!, user.id);
 				const container = new ContainerBuilder();
-				const header = new TextDisplayBuilder().setContent(`## 👤 User Details - ${userDisplayName}`);
+				const header = new TextDisplayBuilder().setContent(`## 👤 User Details - ${userDisplayName}${unitLabel}`);
 				const statusInfo = new TextDisplayBuilder().setContent(`**Current Status:** ${status}`);
 				const weekInfo = new TextDisplayBuilder().setContent(
 					[
@@ -1270,9 +1344,10 @@ export class ShiftCommand extends Subcommand {
 				});
 			} else if (type === 'weekly') {
 				const shifts = Database.shifts.getShiftsByWeek(interaction.guildId, weekOffset);
+				const filteredShifts = unitFilter ? shifts.filter((shift) => shift.unit === unitFilter) : shifts;
 				const dailyStats = new Map<string, { shifts: number; totalTime: number }>();
 
-				for (const shift of shifts) {
+				for (const shift of filteredShifts) {
 					if (shift.end_time) {
 						const date = new Date(shift.start_time * 1000).toLocaleDateString();
 						const existing = dailyStats.get(date) || { shifts: 0, totalTime: 0 };
@@ -1286,6 +1361,7 @@ export class ShiftCommand extends Subcommand {
 				}
 
 				const weekLabel = weekOffset === 0 ? 'Current Week' : weekOffset === -1 ? 'Last Week' : `${Math.abs(weekOffset)} Weeks Ago`;
+				const unitLabel = unitFilter ? ` - ${unitFilter}` : '';
 				const sortedDays = Array.from(dailyStats.entries()).sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
 
 				const dailyLines = sortedDays.map(([date, stats]) => {
@@ -1300,7 +1376,7 @@ export class ShiftCommand extends Subcommand {
 				const totalMinutes = Math.floor((totalTime % 3600) / 60);
 
 				const container = new ContainerBuilder();
-				const header = new TextDisplayBuilder().setContent(`## 📅 Weekly Summary - ${weekLabel}`);
+				const header = new TextDisplayBuilder().setContent(`## 📅 Weekly Summary - ${weekLabel}${unitLabel}`);
 				const summaryInfo = new TextDisplayBuilder().setContent(
 					[
 						`**Total Work Time:** ${totalHours}h ${totalMinutes}m`,

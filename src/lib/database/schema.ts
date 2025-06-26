@@ -31,13 +31,6 @@ export class SchemaManager {
 		`;
 
 		this.db.exec(createGuildSettingsTable);
-
-		// Add the active_shift_channel_id column if it doesn't exist (for existing databases)
-		try {
-			this.db.exec('ALTER TABLE guild_settings ADD COLUMN active_shift_channel_id TEXT');
-		} catch (error) {
-			// Column already exists, ignore error
-		}
 	}
 
 	private createShiftsTable(): void {
@@ -48,6 +41,7 @@ export class SchemaManager {
 				guild_id TEXT NOT NULL,
 				start_time INTEGER NOT NULL,
 				end_time INTEGER,
+				unit TEXT,
 				created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
 				updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 			)
@@ -57,6 +51,7 @@ export class SchemaManager {
 
 		this.db.exec('CREATE INDEX IF NOT EXISTS idx_shifts_discord_id ON shifts(discord_id)');
 		this.db.exec('CREATE INDEX IF NOT EXISTS idx_shifts_guild_id ON shifts(guild_id)');
+		this.db.exec('CREATE INDEX IF NOT EXISTS idx_shifts_unit ON shifts(unit)');
 	}
 
 	private createBreaksTable(): void {
