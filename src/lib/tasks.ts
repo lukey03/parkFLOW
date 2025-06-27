@@ -1,6 +1,6 @@
 import type { SapphireClient } from '@sapphire/framework';
 import { Database } from './database';
-import { ContainerBuilder, TextDisplayBuilder, SeparatorSpacingSize, TextChannel } from 'discord.js';
+import { ContainerBuilder, TextDisplayBuilder, SeparatorSpacingSize, TextChannel, MessageFlags } from 'discord.js';
 import { Config } from './config';
 
 export class TaskManager {
@@ -137,11 +137,13 @@ export class TaskManager {
 
 			if (existingMessage) {
 				await existingMessage.edit({
-					components: [container]
+					components: [container],
+					flags: [MessageFlags.IsComponentsV2]
 				});
 			} else {
 				await channel.send({
-					components: [container]
+					components: [container],
+					flags: [MessageFlags.IsComponentsV2]
 				});
 			}
 		} catch (error) {
