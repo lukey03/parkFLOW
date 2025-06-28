@@ -5,6 +5,8 @@ import { Subcommand } from '@sapphire/plugin-subcommands';
 import { Database } from '../lib/database';
 import { TaskManager } from '../lib/tasks';
 import { Config } from '../lib/config';
+import { InputValidator } from '../lib/inputValidator';
+import { ErrorHandler } from '../lib/errorHandler';
 
 @ApplyOptions<Subcommand.Options>({
 	name: Config.org.shift_term,
@@ -87,13 +89,20 @@ export class ShiftCommand extends Subcommand {
 		return parts.join(' ');
 	}
 
-	private isValidUrl(url: string): boolean {
-		try {
-			new URL(url);
-			return true;
-		} catch {
-			return false;
+	private validateInput(proof: string, reason?: string): { valid: boolean; message?: string } {
+		const urlValidation = InputValidator.validateUrl(proof);
+		if (!urlValidation.valid) {
+			return { valid: false, message: urlValidation.reason };
 		}
+
+		if (reason) {
+			const reasonValidation = InputValidator.validateStringLength(reason, 'reason');
+			if (!reasonValidation.valid) {
+				return { valid: false, message: reasonValidation.reason };
+			}
+		}
+
+		return { valid: true };
 	}
 
 	private getUnitChoices() {
@@ -385,8 +394,15 @@ export class ShiftCommand extends Subcommand {
 		const proof = interaction.options.getString('proof', true);
 		const unit = interaction.options.getString('unit');
 
-		if (!this.isValidUrl(proof)) {
-			const container = this.buildErrorContainer('Invalid Proof', 'Proof must be a valid URL.');
+		const validation = this.validateInput(proof);
+		if (!validation.valid) {
+			ErrorHandler.logSecurityEvent('Invalid proof URL submitted', {
+				logger: this.container.logger,
+				context: 'shift selfToggleFlow',
+				userId: interaction.user.id,
+				guildId: interaction.guildId || undefined
+			});
+			const container = this.buildErrorContainer('Invalid Proof', validation.message || 'Proof validation failed.');
 			return this.replyWithContainer(interaction, container);
 		}
 
@@ -420,7 +436,7 @@ export class ShiftCommand extends Subcommand {
 
 					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId!);
 
-					const container = this.buildMultiSectionContainer('## parkFLOW Shift Action - Ended', [
+					const container = this.buildMultiSectionContainer(`## ${Config.app.name} Shift Action - Ended`, [
 						'You have __ended__ your shift.',
 						[
 							`-# **Effective Duration:** ${effectiveDurationStr}`,
@@ -448,7 +464,7 @@ export class ShiftCommand extends Subcommand {
 
 					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId!);
 
-					const container = this.buildMultiSectionContainer('## parkFLOW Shift Action - Started', [
+					const container = this.buildMultiSectionContainer(`## ${Config.app.name} Shift Action - Started`, [
 						'You have __started__ your shift.',
 						[`-# **Started:** <t:${Math.floor(Date.now() / 1000)}:t>`, `-# **Proof:** ${proof}`].join('\n')
 					]);
@@ -481,7 +497,7 @@ export class ShiftCommand extends Subcommand {
 
 					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId!);
 
-					const container = this.buildMultiSectionContainer('## parkFLOW Shift Action - Break Ended', [
+					const container = this.buildMultiSectionContainer(`## ${Config.app.name} Shift Action - Break Ended`, [
 						'You have __ended__ your break.',
 						[`-# **Duration:** ${durationStr}`, `-# **Proof:** ${proof}`, `-# **Ended at:** <t:${Math.floor(Date.now() / 1000)}:t>`].join(
 							'\n'
@@ -501,7 +517,7 @@ export class ShiftCommand extends Subcommand {
 
 					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId!);
 
-					const container = this.buildMultiSectionContainer('## parkFLOW Shift Action - Break Started', [
+					const container = this.buildMultiSectionContainer(`## ${Config.app.name} Shift Action - Break Started`, [
 						'You have __started__ your break.',
 						[`-# **Started:** <t:${Math.floor(Date.now() / 1000)}:t>`, `-# **Proof:** ${proof}`].join('\n')
 					]);
@@ -711,6 +727,12 @@ export class ShiftCommand extends Subcommand {
 		const action = interaction.options.getString('action', true);
 		const reason = interaction.options.getString('reason', true);
 		const minutes = interaction.options.getInteger('minutes');
+
+		const reasonValidation = InputValidator.validateStringLength(reason, 'reason');
+		if (!reasonValidation.valid) {
+			const container = this.buildErrorContainer('Invalid Reason', reasonValidation.reason || 'Reason validation failed.');
+			return this.replyWithContainer(interaction, container);
+		}
 
 		try {
 			const shift = Database.shifts.findById(shiftId);
@@ -936,6 +958,12 @@ export class ShiftCommand extends Subcommand {
 		const type = interaction.options.getString('type', true);
 		const reason = interaction.options.getString('reason', true);
 
+		const reasonValidation = InputValidator.validateStringLength(reason, 'reason');
+		if (!reasonValidation.valid) {
+			const container = this.buildErrorContainer('Invalid Reason', reasonValidation.reason || 'Reason validation failed.');
+			return this.replyWithContainer(interaction, container);
+		}
+
 		try {
 			if (type === 'shift') {
 				const activeShift = Database.shifts.findActiveShift(user.id, interaction.guildId);
@@ -976,7 +1004,7 @@ export class ShiftCommand extends Subcommand {
 					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId);
 
 					const container = new ContainerBuilder();
-					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Ended Shift`);
+					const header = new TextDisplayBuilder().setContent(`## ${Config.app.name} Department Action - Force Ended Shift`);
 					const info = new TextDisplayBuilder().setContent(
 						[
 							`**Target User:** ${userDisplayName}`,
@@ -1020,7 +1048,7 @@ export class ShiftCommand extends Subcommand {
 					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId);
 
 					const container = new ContainerBuilder();
-					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Started Shift`);
+					const header = new TextDisplayBuilder().setContent(`## ${Config.app.name} Department Action - Force Started Shift`);
 					const info = new TextDisplayBuilder().setContent(
 						[`**Target User:** ${userDisplayName}`, `**Reason:** ${reason}`, `**Action By:** ${actionByDisplayName}`].join('\n')
 					);
@@ -1086,7 +1114,7 @@ export class ShiftCommand extends Subcommand {
 					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId);
 
 					const container = new ContainerBuilder();
-					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Ended Break`);
+					const header = new TextDisplayBuilder().setContent(`## ${Config.app.name} Department Action - Force Ended Break`);
 					const info = new TextDisplayBuilder().setContent(
 						[
 							`**Target User:** ${userDisplayName}`,
@@ -1131,7 +1159,7 @@ export class ShiftCommand extends Subcommand {
 					await TaskManager.getInstance().updateActiveShiftDisplayForGuild(interaction.guildId);
 
 					const container = new ContainerBuilder();
-					const header = new TextDisplayBuilder().setContent(`## parkFLOW Department Action - Force Started Break`);
+					const header = new TextDisplayBuilder().setContent(`## ${Config.app.name} Department Action - Force Started Break`);
 					const info = new TextDisplayBuilder().setContent(
 						[`**Target User:** ${userDisplayName}`, `**Reason:** ${reason}`, `**Action By:** ${actionByDisplayName}`].join('\n')
 					);
