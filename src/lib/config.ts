@@ -77,7 +77,10 @@ class ConfigManager {
 			const configData = readFileSync(configPath, 'utf-8');
 			this.config = JSON.parse(configData);
 		} catch (error) {
-			console.error('Failed to load branding configuration:', error);
+			console.error('Failed to load branding configuration. Please ensure config/branding.json exists and is valid.');
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Development error details:', error);
+			}
 			process.exit(1);
 		}
 	}
