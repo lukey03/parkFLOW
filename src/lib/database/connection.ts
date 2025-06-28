@@ -21,22 +21,30 @@ class DatabaseManager {
 			return this.db;
 		}
 
-		const defaultPath = join(process.cwd(), 'data');
-		const dbDirectory = dbPath ? join(process.cwd(), dbPath) : defaultPath;
+		try {
+			const defaultPath = join(process.cwd(), 'data');
+			const dbDirectory = dbPath ? join(process.cwd(), dbPath) : defaultPath;
 
-		if (!existsSync(dbDirectory)) {
-			mkdirSync(dbDirectory, { recursive: true });
+			if (!existsSync(dbDirectory)) {
+				mkdirSync(dbDirectory, { recursive: true });
+			}
+
+			const dbFile = join(dbDirectory, Config.app.database_filename);
+
+			this.db = new Database(dbFile);
+			this.db.pragma('journal_mode = WAL');
+			this.db.pragma('synchronous = NORMAL');
+			this.db.pragma('cache_size = 1000000');
+			this.db.pragma('temp_store = MEMORY');
+
+			return this.db;
+		} catch (error) {
+			console.error('Failed to connect to database. Please check file permissions and available disk space.');
+			if (process.env.NODE_ENV === 'development') {
+				console.error('Development error details:', error);
+			}
+			throw new Error('Database connection failed');
 		}
-
-		const dbFile = join(dbDirectory, Config.app.database_filename);
-
-		this.db = new Database(dbFile);
-		this.db.pragma('journal_mode = WAL');
-		this.db.pragma('synchronous = NORMAL');
-		this.db.pragma('cache_size = 1000000');
-		this.db.pragma('temp_store = MEMORY');
-
-		return this.db;
 	}
 
 	public getDatabase(): Database.Database {
