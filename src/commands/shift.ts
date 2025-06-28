@@ -394,16 +394,34 @@ export class ShiftCommand extends Subcommand {
 		const proof = interaction.options.getString('proof', true);
 		const unit = interaction.options.getString('unit');
 
-		const validation = this.validateInput(proof);
-		if (!validation.valid) {
-			ErrorHandler.logSecurityEvent('Invalid proof URL submitted', {
-				logger: this.container.logger,
-				context: 'shift selfToggleFlow',
-				userId: interaction.user.id,
-				guildId: interaction.guildId || undefined
-			});
-			const container = this.buildErrorContainer('Invalid Proof', validation.message || 'Proof validation failed.');
-			return this.replyWithContainer(interaction, container);
+		if (type === 'shift') {
+			const activeShift = Database.shifts.findActiveShift(interaction.user.id, interaction.guildId!);
+
+			if (!activeShift) {
+				const validation = this.validateInput(proof);
+				if (!validation.valid) {
+					ErrorHandler.logSecurityEvent('Invalid proof URL submitted', {
+						logger: this.container.logger,
+						context: 'shift selfToggleFlow',
+						userId: interaction.user.id,
+						guildId: interaction.guildId || undefined
+					});
+					const container = this.buildErrorContainer('Invalid Proof', validation.message || 'Proof validation failed.');
+					return this.replyWithContainer(interaction, container);
+				}
+			}
+		} else if (type === 'break') {
+			const validation = this.validateInput(proof);
+			if (!validation.valid) {
+				ErrorHandler.logSecurityEvent('Invalid proof URL submitted', {
+					logger: this.container.logger,
+					context: 'shift selfToggleFlow',
+					userId: interaction.user.id,
+					guildId: interaction.guildId || undefined
+				});
+				const container = this.buildErrorContainer('Invalid Proof', validation.message || 'Proof validation failed.');
+				return this.replyWithContainer(interaction, container);
+			}
 		}
 
 		try {
