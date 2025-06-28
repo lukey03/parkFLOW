@@ -2,6 +2,7 @@ import type { SapphireClient } from '@sapphire/framework';
 import { Database } from './database';
 import { ContainerBuilder, TextDisplayBuilder, SeparatorSpacingSize, TextChannel, MessageFlags } from 'discord.js';
 import { Config } from './config';
+import { messageUpdateRateLimiter } from './rateLimiter';
 
 export class TaskManager {
 	private static instance: TaskManager;
@@ -40,9 +41,10 @@ export class TaskManager {
 		this.activeShiftUpdateInterval = setInterval(
 			async () => {
 				await this.updateAllActiveShiftDisplays();
+				messageUpdateRateLimiter.cleanup();
 			},
 			3 * 60 * 1000
-		); // Update every 3 minutes
+		);
 	}
 
 	private async updateAllActiveShiftDisplays(): Promise<void> {
@@ -131,6 +133,14 @@ export class TaskManager {
 	}
 
 	private async sendOrUpdateActiveShiftMessage(channel: TextChannel, container: ContainerBuilder): Promise<void> {
+		const rateLimitKey = `channel:${channel.id}`;
+
+		if (!messageUpdateRateLimiter.isAllowed(rateLimitKey)) {
+			const remainingTime = messageUpdateRateLimiter.getRemainingTime(rateLimitKey);
+			this.client?.logger.warn(`Rate limit hit for channel ${channel.id}, retry in ${Math.ceil(remainingTime / 1000)}s`);
+			return;
+		}
+
 		try {
 			const messages = await channel.messages.fetch({ limit: 50 });
 			const existingMessage = messages.find((msg) => msg.author.id === this.client?.user?.id && msg.components.length > 0);
@@ -147,7 +157,17 @@ export class TaskManager {
 				});
 			}
 		} catch (error) {
-			this.client?.logger.error('Failed to send/update active shift message:', error);
+			if (error && typeof error === 'object' && 'code' in error) {
+				if (error.code === 50013) {
+					this.client?.logger.warn(`Missing permissions to update active shift message in channel ${channel.id}`);
+				} else if (error.code === 429) {
+					this.client?.logger.warn(`Discord rate limit hit for channel ${channel.id}`);
+				} else {
+					this.client?.logger.error('Failed to send/update active shift message:', error);
+				}
+			} else {
+				this.client?.logger.error('Failed to send/update active shift message:', error);
+			}
 		}
 	}
 
