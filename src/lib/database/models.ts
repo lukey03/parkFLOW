@@ -80,7 +80,19 @@ export class GuildSettingsModel {
 	}
 
 	public update(guildId: string, updates: Partial<Omit<GuildSettings, 'guild_id' | 'created_at'>>): GuildSettings | null {
-		const fields = Object.keys(updates).filter((key) => key !== 'guild_id' && key !== 'created_at');
+		// Security: Only allow updates to specific columns to prevent SQL injection
+		const allowedFields = new Set([
+			'action_logs_channel_id',
+			'shift_logs_channel_id',
+			'active_shift_channel_id',
+			'loa_request_channel_id',
+			'access_role_id',
+			'admin_role_id',
+			'updated_at'
+		]);
+
+		const fields = Object.keys(updates).filter((key) => key !== 'guild_id' && key !== 'created_at' && allowedFields.has(key));
+
 		if (fields.length === 0) return this.findByGuildId(guildId);
 
 		const setClause = fields.map((field) => `${field} = ?`).join(', ');
@@ -272,6 +284,10 @@ export class ShiftModel {
 
 		if (currentWeekShifts.length === 0) return 0;
 
+		if (currentWeekShifts.length > 1000) {
+			throw new Error('Too many shifts to delete in a single operation');
+		}
+
 		const shiftIds = currentWeekShifts.map((shift) => shift.id);
 		const breakModel = new BreakModel();
 
@@ -289,7 +305,18 @@ export class ShiftModel {
 		const shift = this.findById(id);
 		if (!shift || !shift.end_time) return null;
 
+		const MAX_ADJUSTMENT = 7 * 24 * 60 * 60;
+		if (Math.abs(adjustmentSeconds) > MAX_ADJUSTMENT) {
+			throw new Error('Adjustment too large - maximum 7 days');
+		}
+
 		const newEndTime = Math.max(shift.start_time, shift.end_time + adjustmentSeconds);
+
+		const currentTime = Math.floor(Date.now() / 1000);
+		const oneYearFromNow = currentTime + 365 * 24 * 60 * 60;
+		if (newEndTime > oneYearFromNow) {
+			throw new Error('Resulting time is unreasonably far in the future');
+		}
 
 		const stmt = this.db.prepare(`
 			UPDATE shifts 
@@ -487,7 +514,21 @@ export class ActionModel {
 	}
 
 	public update(id: number, updates: Partial<Omit<Action, 'id' | 'created_at'>>): Action | null {
-		const fields = Object.keys(updates).filter((key) => key !== 'id' && key !== 'created_at');
+		// Security: Only allow updates to specific columns to prevent SQL injection
+		const allowedFields = new Set([
+			'discord_id',
+			'guild_id',
+			'action_type',
+			'description',
+			'start_date',
+			'end_date',
+			'is_completed',
+			'completed_at',
+			'updated_at'
+		]);
+
+		const fields = Object.keys(updates).filter((key) => key !== 'id' && key !== 'created_at' && allowedFields.has(key));
+
 		if (fields.length === 0) return this.findById(id);
 
 		const setClause = fields.map((field) => `${field} = ?`).join(', ');
@@ -517,6 +558,10 @@ export class ActionModel {
 		const expiredActions = this.findExpiredActions(guildId);
 
 		if (expiredActions.length > 0) {
+			if (expiredActions.length > 1000) {
+				throw new Error('Too many expired actions to delete in a single operation');
+			}
+
 			const ids = expiredActions.map((action) => action.id);
 			const placeholders = ids.map(() => '?').join(',');
 			const stmt = this.db.prepare(`DELETE FROM actions WHERE id IN (${placeholders})`);
