@@ -6,7 +6,7 @@ import { GatewayIntentBits } from 'discord.js';
 
 const client = new SapphireClient({
 	logger: {
-		level: process.env.NODE_ENV === 'production' ? LogLevel.Error : LogLevel.Debug
+		level: process.env.NODE_ENV === 'production' ? LogLevel.Info : LogLevel.Debug
 	},
 	intents: [GatewayIntentBits.GuildMembers, GatewayIntentBits.Guilds]
 });
