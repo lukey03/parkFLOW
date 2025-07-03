@@ -140,6 +140,11 @@ class ConfigManager {
 			plural_suffix: pluralSuffix
 		});
 	}
+
+	public getUnitNameFromCode(code: string): string {
+		const unit = this.config.units.find((u) => u.code === code);
+		return unit ? unit.name : code;
+	}
 }
 
 export const Config = ConfigManager.getInstance();
