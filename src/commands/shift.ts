@@ -443,7 +443,7 @@ export class ShiftCommand extends Subcommand {
 					const breakTimeStr = this.formatDurationString(breakTime);
 
 					await this.logShiftAction(interaction.guildId!, 'shift-ended', interaction.user, {
-						Unit: activeShift.unit || 'N/A',
+						Unit: activeShift.unit ? Config.getUnitNameFromCode(activeShift.unit) : 'N/A',
 						'Effective Duration': effectiveDurationStr,
 						'Break Time': breakTimeStr,
 						Proof: proof,
@@ -474,7 +474,7 @@ export class ShiftCommand extends Subcommand {
 					const newShift = Database.shifts.startShift(interaction.user.id, interaction.guildId!, unit);
 
 					await this.logShiftAction(interaction.guildId!, 'shift-started', interaction.user, {
-						Unit: unit,
+						Unit: Config.getUnitNameFromCode(unit),
 						Proof: proof,
 						'Shift ID': newShift.id.toString(),
 						Started: `<t:${Math.floor(Date.now() / 1000)}:f>`
@@ -587,18 +587,18 @@ export class ShiftCommand extends Subcommand {
 				const rawHours = Math.floor(totalRawSeconds / 3600);
 				const rawMinutes = Math.floor((totalRawSeconds % 3600) / 60);
 
-				const titleSuffix = unitFilter ? ` (${unitFilter})` : '';
-				const container = new ContainerBuilder();
-				const display = new TextDisplayBuilder().setContent(
-					`# 📊 Total Logged Time${titleSuffix}\n\n**Effective Work Time:** ${effectiveHours}h ${effectiveMinutes}m\n**Total Break Time:** ${breakHours}h ${breakMinutes}m\n**Raw Time:** ${rawHours}h ${rawMinutes}m`
-				);
+				const unitText = unitFilter ? ` for ${Config.getUnitNameFromCode(unitFilter)}` : '';
+				const summaryText = `Your total logged time${unitText}.`;
 
-				container.addTextDisplayComponents(display);
+				const detailsLines = [
+					`-# **Effective Work Time:** ${effectiveHours}h ${effectiveMinutes}m`,
+					`-# **Total Break Time:** ${breakHours}h ${breakMinutes}m`,
+					`-# **Raw Time:** ${rawHours}h ${rawMinutes}m`
+				];
 
-				return interaction.reply({
-					components: [container],
-					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
-				});
+				const container = this.buildMultiSectionContainer(`## ${Config.app.name} Logged Time`, [summaryText, detailsLines.join('\n')]);
+
+				return this.replyWithContainer(interaction, container);
 			} else if (type === 'lastshift') {
 				const shifts = Database.shifts.findByDiscordId(interaction.user.id, interaction.guildId);
 				const filteredShifts = unitFilter ? shifts.filter((shift) => shift.unit === unitFilter) : shifts;
@@ -631,38 +631,36 @@ export class ShiftCommand extends Subcommand {
 				const effectiveMinutes = Math.floor((effectiveDuration % 3600) / 60);
 				const breakHours = Math.floor(breakTime / 3600);
 				const breakMinutes = Math.floor((breakTime % 3600) / 60);
-				const status = lastShift.end_time ? '✅' : '🔄';
 
 				const activeBreak = lastShift.end_time ? null : Database.breaks.findActiveBreak(interaction.user.id, interaction.guildId);
 				const breakStatus = activeBreak ? ' (On Break)' : '';
-				const titleSuffix = unitFilter ? ` (${unitFilter})` : '';
-				const unitInfo = lastShift.unit ? `\n**Unit:** ${lastShift.unit}` : '';
+				const statusText = lastShift.end_time ? 'completed shift' : 'active shift';
+				const unitText = unitFilter ? ` for ${Config.getUnitNameFromCode(unitFilter)}` : '';
+				const summaryText = `Your last ${statusText}${unitText}${breakStatus}.`;
 
-				const container = new ContainerBuilder();
-				const display = new TextDisplayBuilder().setContent(
-					`# ${status} Last Shift${breakStatus}${titleSuffix}${unitInfo}\n\n**Started:** ${startTime}\n**Ended:** ${endTime}\n**Effective Duration:** ${effectiveHours}h ${effectiveMinutes}m\n**Break Time:** ${breakHours}h ${breakMinutes}m\n**Raw Duration:** ${rawHours}h ${rawMinutes}m`
-				);
+				const detailsLines = [
+					`-# **Started:** ${startTime}`,
+					`-# **Ended:** ${endTime}`,
+					`-# **Effective Duration:** ${effectiveHours}h ${effectiveMinutes}m`,
+					`-# **Break Time:** ${breakHours}h ${breakMinutes}m`,
+					`-# **Raw Duration:** ${rawHours}h ${rawMinutes}m`
+				];
 
-				container.addTextDisplayComponents(display);
+				if (lastShift.unit) {
+					detailsLines.splice(2, 0, `-# **Unit:** ${Config.getUnitNameFromCode(lastShift.unit)}`);
+				}
 
-				return interaction.reply({
-					components: [container],
-					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
-				});
+				const container = this.buildMultiSectionContainer(`## ${Config.app.name} Shift View`, [summaryText, detailsLines.join('\n')]);
+
+				return this.replyWithContainer(interaction, container);
 			} else if (type === 'allshifts') {
 				const shifts = Database.shifts.findByDiscordId(interaction.user.id, interaction.guildId);
 				const filteredShifts = unitFilter ? shifts.filter((shift) => shift.unit === unitFilter) : shifts;
 
 				if (filteredShifts.length === 0) {
-					const container = new ContainerBuilder();
-					const display = new TextDisplayBuilder().setContent(`# ❌ No Shifts Found\n\nYou have not logged any shifts yet.`);
-
-					container.addTextDisplayComponents(display);
-
-					return interaction.reply({
-						components: [container],
-						flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
-					});
+					const unitText = unitFilter ? ` for ${Config.getUnitNameFromCode(unitFilter)}` : '';
+					const container = this.buildContainer(`## ${Config.app.name} Shift History`, `You have not logged any shifts${unitText} yet.`);
+					return this.replyWithContainer(interaction, container);
 				}
 
 				const shiftLines = filteredShifts.slice(0, 10).map((shift, index) => {
@@ -679,7 +677,7 @@ export class ShiftCommand extends Subcommand {
 					const status = shift.end_time ? '✅' : '🔄';
 
 					const breakInfo = breakTime > 0 ? ` (${Math.floor(breakTime / 60)}m break)` : '';
-					const unitInfo = shift.unit ? ` [${shift.unit}]` : '';
+					const unitInfo = shift.unit ? ` [${Config.getUnitNameFromCode(shift.unit)}]` : '';
 
 					return `**${index + 1}.** ${status} ${startTime} - **${effectiveHours}h ${effectiveMinutes}m**${breakInfo}${unitInfo}`;
 				});
@@ -687,18 +685,13 @@ export class ShiftCommand extends Subcommand {
 				const totalCount = filteredShifts.length;
 				const showing = Math.min(10, totalCount);
 
-				const titleSuffix = unitFilter ? ` (${unitFilter})` : '';
-				const container = new ContainerBuilder();
-				const display = new TextDisplayBuilder().setContent(
-					`# 📋 All Shifts${titleSuffix} (${showing}/${totalCount})\n\n${shiftLines.join('\n\n')}${totalCount > 10 ? '\n\n*Showing latest 10 shifts*' : ''}`
-				);
+				const unitText = unitFilter ? ` for ${Config.getUnitNameFromCode(unitFilter)}` : '';
+				const summaryText = `Showing ${showing} of ${totalCount} shifts${unitText}.`;
+				const shiftContent = shiftLines.join('\n\n') + (totalCount > 10 ? '\n\n*Latest 10 shifts displayed*' : '');
 
-				container.addTextDisplayComponents(display);
+				const container = this.buildMultiSectionContainer(`## ${Config.app.name} Shift History`, [summaryText, shiftContent]);
 
-				return interaction.reply({
-					components: [container],
-					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
-				});
+				return this.replyWithContainer(interaction, container);
 			}
 
 			const container = new ContainerBuilder();
