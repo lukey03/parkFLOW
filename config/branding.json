@@ -12,13 +12,17 @@
 		"active_term": "active"
 	},
 	"units": [
-		{ "name": "Volunteer", "code": "VOL" },
-		{ "name": "Park Ranger", "code": "PAW" },
-		{ "name": "Wildfire and Rescue", "code": "WFR" },
-		{ "name": "Natural Resource Enforcement Bureau", "code": "NREB" },
-		{ "name": "NREB Traffic Enforcement", "code": "NREBTE" },
-		{ "name": "Crisis Response Team", "code": "CRT" },
+		{ "name": "Behavioral Standards Office", "code": "BSR"},
+		{ "name": "Public Relations Office", "code": "PR" },
+		{ "name": "Professional Development Office", "code": "PDO" },
+		{ "name": "Patrol Group 1", "code": "PG1" },
+		{ "name": "Patrol Group 2", "code": "PG2" },
+		{ "name": "Wildland Fire Rescue", "code": "WFR" },
+		{ "name": "Patrol Unit Alpha", "code": "1NR" },
+		{ "name": "Patrol Unit Bravo", "code": "2NR" },
+		{ "name": "Traffic Enforcement Unit", "code": "TE" },
 		{ "name": "Nopyfruit Enforcement Team", "code": "NET" },
+		{ "name": "Crisis Response Team", "code": "CRT" },
 		{ "name": "Air Support Unit", "code": "ASU" }
 	],
 	"ui_text": {
