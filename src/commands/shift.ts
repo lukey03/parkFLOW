@@ -434,7 +434,7 @@ export class ShiftCommand extends Subcommand {
 						Database.breaks.endBreak(activeBreak.id);
 					}
 
-					Database.shifts.endShift(activeShift.id);
+					Database.shifts.endShift(activeShift.id, proof);
 
 					const rawDuration = Math.floor(Date.now() / 1000 - activeShift.start_time);
 					const breakTime = Database.breaks.getTotalBreakTimeForShift(activeShift.id);
@@ -471,7 +471,7 @@ export class ShiftCommand extends Subcommand {
 						return this.replyWithContainer(interaction, container);
 					}
 
-					const newShift = Database.shifts.startShift(interaction.user.id, interaction.guildId!, unit);
+					const newShift = Database.shifts.startShift(interaction.user.id, interaction.guildId!, unit, proof);
 
 					await this.logShiftAction(interaction.guildId!, 'shift-started', interaction.user, {
 						Unit: Config.getUnitNameFromCode(unit),
@@ -648,6 +648,13 @@ export class ShiftCommand extends Subcommand {
 
 				if (lastShift.unit) {
 					detailsLines.splice(2, 0, `-# **Unit:** ${Config.getUnitNameFromCode(lastShift.unit)}`);
+				}
+
+				if (lastShift.start_image_url || lastShift.end_image_url) {
+					const proofParts = [];
+					if (lastShift.start_image_url) proofParts.push(`[Start](${lastShift.start_image_url})`);
+					if (lastShift.end_image_url) proofParts.push(`[End](${lastShift.end_image_url})`);
+					detailsLines.push(`-# **Proof:** ${proofParts.join(', ')}`);
 				}
 
 				const container = this.buildMultiSectionContainer(`## ${Config.app.name} Shift View`, [summaryText, detailsLines.join('\n')]);
@@ -985,7 +992,7 @@ export class ShiftCommand extends Subcommand {
 						Database.breaks.endBreak(activeBreak.id);
 					}
 
-					Database.shifts.endShift(activeShift.id);
+					Database.shifts.endShift(activeShift.id, reason);
 					const effectiveDuration = Database.shifts.getEffectiveShiftDuration(activeShift, Database.breaks);
 					const hours = Math.floor(effectiveDuration / 3600);
 					const minutes = Math.floor((effectiveDuration % 3600) / 60);
@@ -1034,7 +1041,7 @@ export class ShiftCommand extends Subcommand {
 						flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
 					});
 				} else {
-					const newShift = Database.shifts.startShift(user.id, interaction.guildId);
+					const newShift = Database.shifts.startShift(user.id, interaction.guildId, undefined, reason);
 
 					const userDisplayName = await this.getDisplayName(interaction.guildId, user.id);
 					const actionByDisplayName = await this.getDisplayName(interaction.guildId, interaction.user.id);
@@ -1335,7 +1342,15 @@ export class ShiftCommand extends Subcommand {
 					const minutes = Math.floor((effectiveDuration % 3600) / 60);
 					const shiftStatus = shift.end_time ? '✅' : '🔄';
 
-					return `${shiftStatus} ${date} - ${hours}h ${minutes}m (ID: ${shift.id})`;
+					let proofText = '';
+					if (shift.start_image_url || shift.end_image_url) {
+						const proofParts = [];
+						if (shift.start_image_url) proofParts.push(`[Start](${shift.start_image_url})`);
+						if (shift.end_image_url) proofParts.push(`[End](${shift.end_image_url})`);
+						proofText = ` [${proofParts.join(', ')}]`;
+					}
+
+					return `${shiftStatus} ${date} - ${hours}h ${minutes}m (ID: ${shift.id})${proofText}`;
 				});
 
 				const userDisplayName = await this.getDisplayName(interaction.guildId!, user.id);

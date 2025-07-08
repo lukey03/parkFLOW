@@ -20,6 +20,8 @@ export interface Shift {
 	start_time: number;
 	end_time?: number;
 	unit?: string;
+	start_image_url?: string;
+	end_image_url?: string;
 	created_at: number;
 	updated_at: number;
 }
@@ -121,18 +123,18 @@ export class ShiftModel {
 		this.db = dbManager.getDatabase();
 	}
 
-	public startShift(discordId: string, guildId: string, unit?: string): Shift {
+	public startShift(discordId: string, guildId: string, unit?: string, startImageUrl?: string): Shift {
 		const stmt = this.db.prepare(`
-			INSERT INTO shifts (discord_id, guild_id, start_time, unit)
-			VALUES (?, ?, ?, ?)
+			INSERT INTO shifts (discord_id, guild_id, start_time, unit, start_image_url)
+			VALUES (?, ?, ?, ?, ?)
 		`);
 
 		const startTime = Math.floor(Date.now() / 1000);
-		const result = stmt.run(discordId, guildId, startTime, unit);
+		const result = stmt.run(discordId, guildId, startTime, unit, startImageUrl);
 		return this.findById(result.lastInsertRowid as number)!;
 	}
 
-	public endShift(id: number): Shift | null {
+	public endShift(id: number, endImageUrl?: string): Shift | null {
 		const shift = this.findById(id);
 		if (!shift || shift.end_time) {
 			return null;
@@ -142,11 +144,11 @@ export class ShiftModel {
 
 		const stmt = this.db.prepare(`
 			UPDATE shifts 
-			SET end_time = ?, updated_at = strftime('%s', 'now')
+			SET end_time = ?, end_image_url = ?, updated_at = strftime('%s', 'now')
 			WHERE id = ?
 		`);
 
-		stmt.run(endTime, id);
+		stmt.run(endTime, endImageUrl, id);
 		return this.findById(id);
 	}
 

@@ -42,6 +42,8 @@ export class SchemaManager {
 				start_time INTEGER NOT NULL,
 				end_time INTEGER,
 				unit TEXT,
+				start_image_url TEXT,
+				end_image_url TEXT,
 				created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
 				updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 			)
@@ -52,6 +54,8 @@ export class SchemaManager {
 		this.db.exec('CREATE INDEX IF NOT EXISTS idx_shifts_discord_id ON shifts(discord_id)');
 		this.db.exec('CREATE INDEX IF NOT EXISTS idx_shifts_guild_id ON shifts(guild_id)');
 		this.db.exec('CREATE INDEX IF NOT EXISTS idx_shifts_unit ON shifts(unit)');
+
+		this.addImageUrlColumns();
 	}
 
 	private createBreaksTable(): void {
@@ -110,5 +114,18 @@ export class SchemaManager {
 	public getTableInfo(tableName: string): any[] {
 		const stmt = this.db.prepare(`PRAGMA table_info(${tableName})`);
 		return stmt.all();
+	}
+
+	private addImageUrlColumns(): void {
+		const columns = this.getTableInfo('shifts');
+		const hasStartImageUrl = columns.some((col) => col.name === 'start_image_url');
+		const hasEndImageUrl = columns.some((col) => col.name === 'end_image_url');
+
+		if (!hasStartImageUrl) {
+			this.db.exec('ALTER TABLE shifts ADD COLUMN start_image_url TEXT');
+		}
+		if (!hasEndImageUrl) {
+			this.db.exec('ALTER TABLE shifts ADD COLUMN end_image_url TEXT');
+		}
 	}
 }
