@@ -17,12 +17,12 @@
 		{ "name": "Professional Development Office", "code": "PDO" },
 		{ "name": "Patrol Group 1", "code": "PG1" },
 		{ "name": "Patrol Group 2", "code": "PG2" },
+		{ "name": "Volunteer Service", "code": "VOL" },
 		{ "name": "Wildland Fire Rescue", "code": "WFR" },
 		{ "name": "Patrol Unit Alpha", "code": "1NR" },
 		{ "name": "Patrol Unit Bravo", "code": "2NR" },
 		{ "name": "Traffic Enforcement Unit", "code": "TE" },
-		{ "name": "Nopyfruit Enforcement Team", "code": "NET" },
-		{ "name": "Crisis Response Team", "code": "CRT" },
+		{ "name": "Crisis and Interdiction", "code": "NET" },
 		{ "name": "Air Support Unit", "code": "ASU" }
 	],
 	"ui_text": {
