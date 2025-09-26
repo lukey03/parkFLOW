@@ -365,14 +365,14 @@ export class ShiftCommand extends Subcommand {
 										.addChoices(
 											{ name: 'Department Overview', value: 'department' },
 											{ name: 'User Details', value: 'user' },
-											{ name: 'Weekly Summary', value: 'weekly' }
+											{ name: 'Biweekly Summary', value: 'weekly' }
 										)
 								)
 								.addUserOption((option) => option.setName('user').setDescription('Specific user (required for User Details)'))
 								.addIntegerOption((option) =>
 									option
 										.setName('week')
-										.setDescription('Week offset (0=current, -1=last week, etc.)')
+										.setDescription('Biweek offset (0=current, -1=last biweek, etc.)')
 										.setMinValue(-3)
 										.setMaxValue(0)
 								)
@@ -910,9 +910,9 @@ export class ShiftCommand extends Subcommand {
 			const header = new TextDisplayBuilder().setContent(`## ⚠️ Confirmation Required`);
 			const warning = new TextDisplayBuilder().setContent(
 				[
-					`To confirm the weekly reset, please type "RESET" exactly.`,
+					`To confirm the biweekly reset, please type "RESET" exactly.`,
 					'',
-					`⚠️ **Warning:** This will delete all current week shifts and cannot be undone.`
+					`⚠️ **Warning:** This will delete all current biweek shifts and cannot be undone.`
 				].join('\n')
 			);
 
@@ -951,7 +951,7 @@ export class ShiftCommand extends Subcommand {
 
 			const container = new ContainerBuilder();
 			const header = new TextDisplayBuilder().setContent(`## ⚠️ Error`);
-			const info = new TextDisplayBuilder().setContent(`An error occurred while resetting weekly shifts. Please try again later.`);
+			const info = new TextDisplayBuilder().setContent(`An error occurred while resetting biweekly shifts. Please try again later.`);
 
 			container.addTextDisplayComponents(header);
 			container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
@@ -1254,7 +1254,7 @@ export class ShiftCommand extends Subcommand {
 					}
 				}
 
-				const weekLabel = weekOffset === 0 ? 'Current Week' : weekOffset === -1 ? 'Last Week' : `${Math.abs(weekOffset)} Weeks Ago`;
+				const weekLabel = weekOffset === 0 ? 'Current Biweek' : weekOffset === -1 ? 'Last Biweek' : `${Math.abs(weekOffset)} Biweeks Ago`;
 				const unitLabel = unitFilter ? ` - ${unitFilter}` : '';
 				const sortedUsers = Array.from(userStats.entries()).sort((a, b) => b[1].totalTime - a[1].totalTime);
 
@@ -1329,7 +1329,7 @@ export class ShiftCommand extends Subcommand {
 				const activeBreak = activeShift ? Database.breaks.findActiveBreak(user.id, interaction.guildId) : null;
 				const status = activeShift ? (activeBreak ? 'On Break' : 'Active Shift') : 'Off Shift';
 
-				const weekLabel = weekOffset === 0 ? 'Current Week' : weekOffset === -1 ? 'Last Week' : `${Math.abs(weekOffset)} Weeks Ago`;
+				const weekLabel = weekOffset === 0 ? 'Current Biweek' : weekOffset === -1 ? 'Last Biweek' : `${Math.abs(weekOffset)} Biweeks Ago`;
 				const unitLabel = unitFilter ? ` - ${unitFilter}` : '';
 
 				const recentShifts = filteredUserShifts.slice(0, 3).map((shift) => {
@@ -1398,7 +1398,7 @@ export class ShiftCommand extends Subcommand {
 					}
 				}
 
-				const weekLabel = weekOffset === 0 ? 'Current Week' : weekOffset === -1 ? 'Last Week' : `${Math.abs(weekOffset)} Weeks Ago`;
+				const weekLabel = weekOffset === 0 ? 'Current Biweek' : weekOffset === -1 ? 'Last Biweek' : `${Math.abs(weekOffset)} Biweeks Ago`;
 				const unitLabel = unitFilter ? ` - ${unitFilter}` : '';
 				const sortedDays = Array.from(dailyStats.entries()).sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime());
 

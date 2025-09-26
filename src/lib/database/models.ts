@@ -262,35 +262,48 @@ export class ShiftModel {
 	}
 
 	public getShiftsByWeek(guildId: string, weekOffset = 0): Shift[] {
+		return this.getShiftsByBiweek(guildId, weekOffset);
+	}
+
+	public getShiftsByBiweek(guildId: string, biweekOffset = 0): Shift[] {
 		const now = new Date();
-		const startOfWeek = new Date(now);
-		startOfWeek.setDate(now.getDate() - now.getDay() + weekOffset * 7);
-		startOfWeek.setHours(0, 0, 0, 0);
+		const startOfBiweek = new Date(now);
 
-		const endOfWeek = new Date(startOfWeek);
-		endOfWeek.setDate(startOfWeek.getDate() + 7);
+		const daysSinceMonday = (now.getDay() + 6) % 7;
+		startOfBiweek.setDate(now.getDate() - daysSinceMonday);
 
-		const startTimestamp = Math.floor(startOfWeek.getTime() / 1000);
-		const endTimestamp = Math.floor(endOfWeek.getTime() / 1000);
+		const epochMonday = new Date(1970, 0, 5);
+		const weeksSinceEpoch = Math.floor((startOfBiweek.getTime() - epochMonday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+		const biweekStart = weeksSinceEpoch - (weeksSinceEpoch % 2);
+		const targetBiweekStart = biweekStart + (biweekOffset * 2);
+
+		startOfBiweek.setTime(epochMonday.getTime() + (targetBiweekStart * 7 * 24 * 60 * 60 * 1000));
+		startOfBiweek.setHours(0, 0, 0, 0);
+
+		const endOfBiweek = new Date(startOfBiweek);
+		endOfBiweek.setDate(startOfBiweek.getDate() + 14);
+
+		const startTimestamp = Math.floor(startOfBiweek.getTime() / 1000);
+		const endTimestamp = Math.floor(endOfBiweek.getTime() / 1000);
 
 		const stmt = this.db.prepare(`
-			SELECT * FROM shifts 
-			WHERE guild_id = ? AND start_time >= ? AND start_time < ? 
+			SELECT * FROM shifts
+			WHERE guild_id = ? AND start_time >= ? AND start_time < ?
 			ORDER BY start_time DESC
 		`);
 		return stmt.all(guildId, startTimestamp, endTimestamp) as Shift[];
 	}
 
 	public clearWeeklyShifts(guildId: string): number {
-		const currentWeekShifts = this.getShiftsByWeek(guildId, 0);
+		const currentBiweekShifts = this.getShiftsByBiweek(guildId, 0);
 
-		if (currentWeekShifts.length === 0) return 0;
+		if (currentBiweekShifts.length === 0) return 0;
 
-		if (currentWeekShifts.length > 1000) {
+		if (currentBiweekShifts.length > 1000) {
 			throw new Error('Too many shifts to delete in a single operation');
 		}
 
-		const shiftIds = currentWeekShifts.map((shift) => shift.id);
+		const shiftIds = currentBiweekShifts.map((shift) => shift.id);
 		const breakModel = new BreakModel();
 
 		for (const id of shiftIds) {
