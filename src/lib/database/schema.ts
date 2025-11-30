@@ -25,12 +25,23 @@ export class SchemaManager {
 				loa_request_channel_id TEXT,
 				access_role_id TEXT,
 				admin_role_id TEXT,
+				shift_cycle_start_day INTEGER DEFAULT 1,
 				created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now')),
 				updated_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
 			)
 		`;
 
 		this.db.exec(createGuildSettingsTable);
+		this.addShiftCycleStartDayColumn();
+	}
+
+	private addShiftCycleStartDayColumn(): void {
+		const columns = this.getTableInfo('guild_settings');
+		const hasColumn = columns.some((col) => col.name === 'shift_cycle_start_day');
+
+		if (!hasColumn) {
+			this.db.exec('ALTER TABLE guild_settings ADD COLUMN shift_cycle_start_day INTEGER DEFAULT 1');
+		}
 	}
 
 	private createShiftsTable(): void {
@@ -112,6 +123,10 @@ export class SchemaManager {
 	}
 
 	public getTableInfo(tableName: string): any[] {
+		const ALLOWED_TABLES = ['guild_settings', 'shifts', 'breaks', 'actions'];
+		if (!ALLOWED_TABLES.includes(tableName)) {
+			throw new Error(`Invalid table name: ${tableName}`);
+		}
 		const stmt = this.db.prepare(`PRAGMA table_info(${tableName})`);
 		return stmt.all();
 	}

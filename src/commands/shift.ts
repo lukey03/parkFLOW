@@ -7,6 +7,7 @@ import { TaskManager } from '../lib/tasks';
 import { Config } from '../lib/config';
 import { InputValidator } from '../lib/inputValidator';
 import { ErrorHandler } from '../lib/errorHandler';
+import { adminBulkOperationRateLimiter } from '../lib/rateLimiter';
 
 @ApplyOptions<Subcommand.Options>({
 	name: Config.org.shift_term,
@@ -140,10 +141,20 @@ export class ShiftCommand extends Subcommand {
 	}
 
 	private async replyWithContainer(interaction: Subcommand.ChatInputCommandInteraction, container: ContainerBuilder): Promise<any> {
-		return interaction.reply({
-			components: [container],
-			flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
-		});
+		try {
+			if (interaction.deferred || interaction.replied) {
+				return await interaction.editReply({
+					components: [container],
+					flags: [MessageFlags.IsComponentsV2]
+				});
+			}
+			return await interaction.reply({
+				components: [container],
+				flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+			});
+		} catch (error) {
+			this.container.logger.error('Failed to send reply:', error);
+		}
 	}
 
 	private async handleError(
@@ -389,6 +400,8 @@ export class ShiftCommand extends Subcommand {
 
 	public async selfToggleFlow(interaction: Subcommand.ChatInputCommandInteraction) {
 		if (!(await this.validateGuildContext(interaction))) return;
+
+		await interaction.deferReply({ ephemeral: true });
 
 		const type = interaction.options.getString('type', true);
 		const proof = interaction.options.getString('proof', true);
@@ -740,6 +753,8 @@ export class ShiftCommand extends Subcommand {
 			});
 		}
 
+		await interaction.deferReply({ ephemeral: true });
+
 		const user = interaction.options.getUser('user', true);
 		const shiftId = interaction.options.getInteger('shift_id', true);
 		const action = interaction.options.getString('action', true);
@@ -903,6 +918,17 @@ export class ShiftCommand extends Subcommand {
 			});
 		}
 
+		const rateLimitKey = `reset:${interaction.guildId}`;
+		if (!adminBulkOperationRateLimiter.isAllowed(rateLimitKey)) {
+			const remainingMs = adminBulkOperationRateLimiter.getRemainingTime(rateLimitKey);
+			const remainingMinutes = Math.ceil(remainingMs / 60000);
+			const container = this.buildErrorContainer(
+				'Rate Limited',
+				`This operation can only be performed once every 5 minutes. Please wait ${remainingMinutes} minute(s).`
+			);
+			return this.replyWithContainer(interaction, container);
+		}
+
 		const confirmation = interaction.options.getString('confirmation', true);
 
 		if (confirmation !== 'RESET') {
@@ -926,41 +952,23 @@ export class ShiftCommand extends Subcommand {
 			});
 		}
 
+		await interaction.deferReply({ ephemeral: true });
+
 		try {
 			const currentWeekShifts = Database.shifts.getShiftsByWeek(interaction.guildId, 0);
 			const uniqueUsers = new Set(currentWeekShifts.map((shift) => shift.discord_id));
 			const deletedCount = Database.shifts.clearWeeklyShifts(interaction.guildId);
 
 			const resetByDisplayName = await this.getDisplayName(interaction.guildId, interaction.user.id);
-			const container = new ContainerBuilder();
-			const header = new TextDisplayBuilder().setContent(`## ✅ Weekly Reset Complete`);
-			const info = new TextDisplayBuilder().setContent(
+			const container = this.buildMultiSectionContainer(`## ✅ Weekly Reset Complete`, [
 				[`**Shifts Deleted:** ${deletedCount}`, `**Users Affected:** ${uniqueUsers.size}`, `**Reset By:** ${resetByDisplayName}`].join('\n')
-			);
+			]);
 
-			container.addTextDisplayComponents(header);
-			container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
-			container.addTextDisplayComponents(info);
-
-			return interaction.reply({
-				components: [container],
-				flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
-			});
+			return this.replyWithContainer(interaction, container);
 		} catch (error) {
 			this.container.logger.error('Error in department reset:', error);
-
-			const container = new ContainerBuilder();
-			const header = new TextDisplayBuilder().setContent(`## ⚠️ Error`);
-			const info = new TextDisplayBuilder().setContent(`An error occurred while resetting biweekly shifts. Please try again later.`);
-
-			container.addTextDisplayComponents(header);
-			container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
-			container.addTextDisplayComponents(info);
-
-			return interaction.reply({
-				components: [container],
-				flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
-			});
+			const container = this.buildErrorContainer('Error', 'An error occurred while resetting biweekly shifts. Please try again later.');
+			return this.replyWithContainer(interaction, container);
 		}
 	}
 
@@ -971,6 +979,8 @@ export class ShiftCommand extends Subcommand {
 				flags: [MessageFlags.Ephemeral]
 			});
 		}
+
+		await interaction.deferReply({ ephemeral: true });
 
 		const user = interaction.options.getUser('user', true);
 		const type = interaction.options.getString('type', true);
@@ -1230,6 +1240,8 @@ export class ShiftCommand extends Subcommand {
 				flags: [MessageFlags.Ephemeral]
 			});
 		}
+
+		await interaction.deferReply({ ephemeral: true });
 
 		const type = interaction.options.getString('type', true);
 		const user = interaction.options.getUser('user');

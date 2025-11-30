@@ -1,15 +1,15 @@
 import type { SapphireClient } from '@sapphire/framework';
 import { Database } from './database';
-import { ContainerBuilder, TextDisplayBuilder, SeparatorSpacingSize, TextChannel, MessageFlags, EmbedBuilder } from 'discord.js';
+import { ContainerBuilder, TextDisplayBuilder, SeparatorSpacingSize, TextChannel, MessageFlags } from 'discord.js';
 import { Config } from './config';
 import { messageUpdateRateLimiter } from './rateLimiter';
-import { RobloxUtils } from './robloxUtils';
 
 export class TaskManager {
 	private static instance: TaskManager;
 	private activeShiftUpdateInterval: NodeJS.Timeout | null = null;
-	private probationCheckInterval: NodeJS.Timeout | null = null;
 	private client: SapphireClient | null = null;
+	private warnedChannels: Map<string, number> = new Map();
+	private readonly WARNING_COOLDOWN_MS = 60 * 60 * 1000;
 
 	private constructor() {}
 
@@ -24,9 +24,20 @@ export class TaskManager {
 		this.client = client;
 	}
 
+	private shouldWarn(channelId: string, errorType: string): boolean {
+		const key = `${channelId}:${errorType}`;
+		const lastWarned = this.warnedChannels.get(key);
+		const now = Date.now();
+
+		if (!lastWarned || now - lastWarned > this.WARNING_COOLDOWN_MS) {
+			this.warnedChannels.set(key, now);
+			return true;
+		}
+		return false;
+	}
+
 	public startPeriodicTasks(): void {
 		this.startActiveShiftUpdates();
-		this.startProbationChecks();
 	}
 
 	public async updateActiveShiftDisplayForGuild(guildId: string): Promise<void> {
@@ -37,10 +48,6 @@ export class TaskManager {
 		if (this.activeShiftUpdateInterval) {
 			clearInterval(this.activeShiftUpdateInterval);
 			this.activeShiftUpdateInterval = null;
-		}
-		if (this.probationCheckInterval) {
-			clearInterval(this.probationCheckInterval);
-			this.probationCheckInterval = null;
 		}
 	}
 
@@ -143,8 +150,6 @@ export class TaskManager {
 		const rateLimitKey = `channel:${channel.id}`;
 
 		if (!messageUpdateRateLimiter.isAllowed(rateLimitKey)) {
-			const remainingTime = messageUpdateRateLimiter.getRemainingTime(rateLimitKey);
-			this.client?.logger.warn(`Rate limit hit for channel ${channel.id}, retry in ${Math.ceil(remainingTime / 1000)}s`);
 			return;
 		}
 
@@ -166,11 +171,17 @@ export class TaskManager {
 		} catch (error) {
 			if (error && typeof error === 'object' && 'code' in error) {
 				if (error.code === 50001) {
-					this.client?.logger.warn(`Missing access to update active shift message in channel ${channel.id}`);
+					if (this.shouldWarn(channel.id, 'access')) {
+						this.client?.logger.warn(`Missing access to update active shift message in channel ${channel.id}`);
+					}
 				} else if (error.code === 50013) {
-					this.client?.logger.warn(`Missing permissions to update active shift message in channel ${channel.id}`);
+					if (this.shouldWarn(channel.id, 'permissions')) {
+						this.client?.logger.warn(`Missing permissions to update active shift message in channel ${channel.id}`);
+					}
 				} else if (error.code === 429) {
-					this.client?.logger.warn(`Discord rate limit hit for channel ${channel.id}`);
+					if (this.shouldWarn(channel.id, 'ratelimit')) {
+						this.client?.logger.warn(`Discord rate limit hit for channel ${channel.id}`);
+					}
 				} else {
 					this.client?.logger.error('Failed to send/update active shift message [1]:', error);
 				}
@@ -243,76 +254,5 @@ export class TaskManager {
 		if (parts.length === 0) parts.push('0m');
 
 		return parts.join(' ');
-	}
-
-	private startProbationChecks(): void {
-		this.probationCheckInterval = setInterval(
-			async () => {
-				await this.checkExpiredProbations();
-			},
-			5 * 60 * 1000
-		);
-	}
-
-	private async checkExpiredProbations(): Promise<void> {
-		try {
-			if (!this.client) return;
-
-			const expiredActions = Database.actions.findExpiredActions();
-
-			for (const action of expiredActions) {
-				if (action.action_type === 'probation') {
-					await this.handleExpiredProbation(action);
-				}
-				Database.actions.deleteAfterLogging(action.id);
-			}
-		} catch (error) {
-			this.client?.logger.error('Error checking expired probations:', error);
-		}
-	}
-
-	private async handleExpiredProbation(action: any): Promise<void> {
-		try {
-			if (!this.client) return;
-
-			const guildSettings = Database.guildSettings.findByGuildId(action.guild_id);
-			if (!guildSettings?.action_logs_channel_id) {
-				return;
-			}
-
-			const channel = await this.client.channels.fetch(guildSettings.action_logs_channel_id);
-			if (!channel?.isTextBased()) {
-				return;
-			}
-
-			const guild = await this.client.guilds.fetch(action.guild_id);
-			const member = await guild.members.fetch(action.discord_id);
-			const displayName = member.nickname || member.user.username;
-
-			const robloxAvatar = await RobloxUtils.getRobloxAvatar(action.discord_id, action.guild_id, this.client!, '150x150');
-
-			const embed = new EmbedBuilder()
-				.setTitle('Probation Completed')
-				.setDescription(`**${displayName}** has completed their probation period.`)
-				.setColor(0x28a745)
-				.setThumbnail(robloxAvatar)
-				.setFooter({
-					text: Config.app.name,
-					iconURL: guild.iconURL() || undefined
-				})
-				.setTimestamp();
-
-			if (action.description) {
-				embed.addFields({
-					name: 'Original Notes',
-					value: action.description,
-					inline: false
-				});
-			}
-
-			await (channel as TextChannel).send({ embeds: [embed] });
-		} catch (error) {
-			this.client?.logger.error('Failed to handle expired probation:', error);
-		}
 	}
 }

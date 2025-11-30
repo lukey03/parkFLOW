@@ -1,6 +1,6 @@
-// Allowlisted domains for proof URLs - modify this list to add/remove trusted domains
 const ALLOWED_DOMAINS = new Set([
 	'imgur.com',
+	'i.imgur.com',
 	'gyazo.com',
 	'i.gyazo.com',
 	'prntscr.com',
@@ -9,7 +9,8 @@ const ALLOWED_DOMAINS = new Set([
 	'discord.com',
 	'discordapp.com',
 	'cdn.discordapp.com',
-	'media.discordapp.net'
+	'media.discordapp.net',
+	'media.discordapp.com'
 ]);
 
 const MAX_LENGTHS = {
@@ -37,14 +38,12 @@ export class InputValidator {
 			return { valid: false, reason: 'Invalid URL format' };
 		}
 
-		if (parsedUrl.protocol !== 'https:' && !parsedUrl.hostname.includes('localhost')) {
+		if (parsedUrl.protocol !== 'https:') {
 			return { valid: false, reason: 'Only HTTPS URLs are allowed' };
 		}
 
 		const hostname = parsedUrl.hostname.toLowerCase();
-		const isAllowed = ALLOWED_DOMAINS.has(hostname) || Array.from(ALLOWED_DOMAINS).some((domain) => hostname.endsWith('.' + domain));
-
-		if (!isAllowed) {
+		if (!ALLOWED_DOMAINS.has(hostname)) {
 			return { valid: false, reason: 'URL domain not allowed. Please use approved image/video hosting services.' };
 		}
 

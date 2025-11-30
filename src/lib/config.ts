@@ -5,6 +5,7 @@ interface BrandingConfig {
 	application: {
 		name: string;
 		database_filename: string;
+		shift_cycle_start_day?: number;
 	};
 	jurisdiction: {
 		name: string;
@@ -99,6 +100,10 @@ class ConfigManager {
 
 	public get ui(): BrandingConfig['ui_text'] {
 		return this.config.ui_text;
+	}
+
+	public get shiftCycleStartDay(): number {
+		return this.config.application.shift_cycle_start_day ?? 1;
 	}
 
 	public formatText(template: string, variables: Record<string, string | number> = {}): string {

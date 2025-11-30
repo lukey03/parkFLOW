@@ -51,5 +51,5 @@ export class RateLimiter {
 	}
 }
 
-// Global rate limiter for Discord message updates - adjust limits as needed
 export const messageUpdateRateLimiter = new RateLimiter(5, 180000);
+export const adminBulkOperationRateLimiter = new RateLimiter(1, 300000);

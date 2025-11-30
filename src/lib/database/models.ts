@@ -1,5 +1,6 @@
 import type Database from 'better-sqlite3';
 import { dbManager } from './connection';
+import { Config } from '../config';
 
 export interface GuildSettings {
 	guild_id: string;
@@ -9,6 +10,7 @@ export interface GuildSettings {
 	loa_request_channel_id?: string;
 	access_role_id?: string;
 	admin_role_id?: string;
+	shift_cycle_start_day?: number;
 	created_at: number;
 	updated_at: number;
 }
@@ -60,8 +62,8 @@ export class GuildSettingsModel {
 
 	public create(guildId: string, settings: Partial<Omit<GuildSettings, 'guild_id' | 'created_at' | 'updated_at'>> = {}): GuildSettings {
 		const stmt = this.db.prepare(`
-			INSERT INTO guild_settings (guild_id, action_logs_channel_id, shift_logs_channel_id, active_shift_channel_id, loa_request_channel_id, access_role_id, admin_role_id)
-			VALUES (?, ?, ?, ?, ?, ?, ?)
+			INSERT INTO guild_settings (guild_id, action_logs_channel_id, shift_logs_channel_id, active_shift_channel_id, loa_request_channel_id, access_role_id, admin_role_id, shift_cycle_start_day)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 		`);
 
 		stmt.run(
@@ -71,7 +73,8 @@ export class GuildSettingsModel {
 			settings.active_shift_channel_id,
 			settings.loa_request_channel_id,
 			settings.access_role_id,
-			settings.admin_role_id
+			settings.admin_role_id,
+			settings.shift_cycle_start_day ?? 1
 		);
 		return this.findByGuildId(guildId)!;
 	}
@@ -82,7 +85,6 @@ export class GuildSettingsModel {
 	}
 
 	public update(guildId: string, updates: Partial<Omit<GuildSettings, 'guild_id' | 'created_at'>>): GuildSettings | null {
-		// Security: Only allow updates to specific columns to prevent SQL injection
 		const allowedFields = new Set([
 			'action_logs_channel_id',
 			'shift_logs_channel_id',
@@ -90,6 +92,7 @@ export class GuildSettingsModel {
 			'loa_request_channel_id',
 			'access_role_id',
 			'admin_role_id',
+			'shift_cycle_start_day',
 			'updated_at'
 		]);
 
@@ -269,15 +272,21 @@ export class ShiftModel {
 		const now = new Date();
 		const startOfBiweek = new Date(now);
 
-		const daysSinceMonday = (now.getDay() + 6) % 7;
-		startOfBiweek.setDate(now.getDate() - daysSinceMonday);
+		const guildSettingsStmt = this.db.prepare('SELECT shift_cycle_start_day FROM guild_settings WHERE guild_id = ?');
+		const guildSettings = guildSettingsStmt.get(guildId) as { shift_cycle_start_day?: number } | undefined;
+		const cycleStartDay = guildSettings?.shift_cycle_start_day ?? Config.shiftCycleStartDay;
 
-		const epochMonday = new Date(1970, 0, 5);
-		const weeksSinceEpoch = Math.floor((startOfBiweek.getTime() - epochMonday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+		const daysSinceStart = (now.getDay() - cycleStartDay + 7) % 7;
+		startOfBiweek.setDate(now.getDate() - daysSinceStart);
+
+		const daysToAdd = (cycleStartDay - 4 + 7) % 7;
+		const epochStartDay = new Date(1970, 0, 1 + daysToAdd);
+
+		const weeksSinceEpoch = Math.floor((startOfBiweek.getTime() - epochStartDay.getTime()) / (7 * 24 * 60 * 60 * 1000));
 		const biweekStart = weeksSinceEpoch - (weeksSinceEpoch % 2);
-		const targetBiweekStart = biweekStart + (biweekOffset * 2);
+		const targetBiweekStart = biweekStart + biweekOffset * 2;
 
-		startOfBiweek.setTime(epochMonday.getTime() + (targetBiweekStart * 7 * 24 * 60 * 60 * 1000));
+		startOfBiweek.setTime(epochStartDay.getTime() + targetBiweekStart * 7 * 24 * 60 * 60 * 1000);
 		startOfBiweek.setHours(0, 0, 0, 0);
 
 		const endOfBiweek = new Date(startOfBiweek);
@@ -529,7 +538,6 @@ export class ActionModel {
 	}
 
 	public update(id: number, updates: Partial<Omit<Action, 'id' | 'created_at'>>): Action | null {
-		// Security: Only allow updates to specific columns to prevent SQL injection
 		const allowedFields = new Set([
 			'discord_id',
 			'guild_id',

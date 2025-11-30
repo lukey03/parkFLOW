@@ -1,7 +1,8 @@
 {
 	"application": {
 		"name": "parkFLOW",
-		"database_filename": "parkflow.db"
+		"database_filename": "parkflow.db",
+		"shift_cycle_start_day": 1
 	},
 	"jurisdiction": {
 		"name": "the State Park",
@@ -23,7 +24,8 @@
 		{ "name": "Patrol Unit Bravo", "code": "2NR" },
 		{ "name": "Traffic Enforcement Unit", "code": "TE" },
 		{ "name": "Crisis and Interdiction", "code": "NET" },
-		{ "name": "Air Support Unit", "code": "ASU" }
+		{ "name": "Air Support Unit", "code": "ASU" },
+		{ "name": "NREB Command", "code": "NREBCMD" }
 	],
 	"ui_text": {
 		"active_shifts_header": "🕐 Active Shifts",

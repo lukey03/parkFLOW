@@ -22,7 +22,7 @@ A Discord bot for shift logging and department action management designed for la
 ### Department Commands (Admin Only)
 
 - `/shift department adjust` - Modify user shift times or delete shifts
-- `/shift department reset` - Clear weekly shift data
+- `/shift department reset` - Clear biweekly shift data
 - `/shift department toggle` - Force toggle user shifts/breaks
 - `/shift department view` - View department or specific user shifts
 
