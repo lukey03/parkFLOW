@@ -95,7 +95,7 @@ export class ServerSetupCommand extends Command {
 	}
 
 	public override async chatInputRun(interaction: Command.ChatInputCommandInteraction) {
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
 		if (!interaction.guildId) {
 			const container = this.buildErrorContainer('Server Only', 'This command can only be used in a server.');

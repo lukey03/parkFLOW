@@ -1,24 +1,28 @@
 import { AllFlowsPrecondition } from '@sapphire/framework';
-import type { CommandInteraction, ContextMenuCommandInteraction, Message } from 'discord.js';
+import type { CommandInteraction, ContextMenuCommandInteraction, Message, GuildMember } from 'discord.js';
 import { Database } from '../lib/database';
 import { ErrorHandler } from '../lib/errorHandler';
 
 export class StaffAccessPrecondition extends AllFlowsPrecondition {
-	public override async chatInputRun(interaction: CommandInteraction) {
-		return this.doCheck(interaction.user, interaction.guildId);
+	public override chatInputRun(interaction: CommandInteraction) {
+		return this.doCheck(interaction.member as GuildMember | null, interaction.user.id, interaction.guildId);
 	}
 
-	public override async contextMenuRun(interaction: ContextMenuCommandInteraction) {
-		return this.doCheck(interaction.user, interaction.guildId);
+	public override contextMenuRun(interaction: ContextMenuCommandInteraction) {
+		return this.doCheck(interaction.member as GuildMember | null, interaction.user.id, interaction.guildId);
 	}
 
 	public override messageRun(_message: Message) {
 		return this.error({ message: 'Message commands are not supported.' });
 	}
 
-	private async doCheck(user: CommandInteraction['user'], guildId: string | null) {
+	private doCheck(member: GuildMember | null, userId: string, guildId: string | null) {
 		if (!guildId) {
 			return this.error({ message: 'This command can only be used in a server.' });
+		}
+
+		if (!member) {
+			return this.error({ message: 'Could not verify your permissions. Please try again.' });
 		}
 
 		const guildSettings = Database.guildSettings.findByGuildId(guildId);
@@ -26,31 +30,18 @@ export class StaffAccessPrecondition extends AllFlowsPrecondition {
 			return this.error({ message: 'Server staff access role not configured.' });
 		}
 
-		try {
-			const guild = await this.container.client.guilds.fetch(guildId);
-			const member = await guild.members.fetch(user.id);
+		const hasAccessRole = member.roles.cache.has(guildSettings.access_role_id);
 
-			if (!member) {
-				this.container.logger.warn(`Failed to fetch member data for user ${user.id} in guild ${guildId}`);
-				return this.error({ message: 'An error occurred while trying to fetch your member data, please try again.' });
-			}
-
-			const hasAccessRole = member.roles.cache.has(guildSettings.access_role_id);
-
-			if (!hasAccessRole) {
-				ErrorHandler.logSecurityEvent('Access denied - missing staff role', {
-					logger: this.container.logger,
-					context: 'StaffAccess precondition',
-					userId: user.id,
-					guildId: guildId
-				});
-			}
-
-			return hasAccessRole ? this.ok() : this.error({ message: 'You do not have permission to use this command.' });
-		} catch (error) {
-			this.container.logger.error(`Error checking staff access for user ${user.id} in guild ${guildId}:`, error);
-			return this.error({ message: 'An error occurred while verifying your permissions. Please try again.' });
+		if (!hasAccessRole) {
+			ErrorHandler.logSecurityEvent('Access denied - missing staff role', {
+				logger: this.container.logger,
+				context: 'StaffAccess precondition',
+				userId: userId,
+				guildId: guildId
+			});
 		}
+
+		return hasAccessRole ? this.ok() : this.error({ message: 'You do not have permission to use this command.' });
 	}
 }
 

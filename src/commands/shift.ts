@@ -401,7 +401,7 @@ export class ShiftCommand extends Subcommand {
 	public async selfToggleFlow(interaction: Subcommand.ChatInputCommandInteraction) {
 		if (!(await this.validateGuildContext(interaction))) return;
 
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
 		const type = interaction.options.getString('type', true);
 		const proof = interaction.options.getString('proof', true);
@@ -572,6 +572,8 @@ export class ShiftCommand extends Subcommand {
 			});
 		}
 
+		await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+
 		const type = interaction.options.getString('type', true);
 		const unitFilter = interaction.options.getString('unit');
 
@@ -623,9 +625,9 @@ export class ShiftCommand extends Subcommand {
 
 					container.addTextDisplayComponents(display);
 
-					return interaction.reply({
+					return interaction.editReply({
 						components: [container],
-						flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+						flags: [MessageFlags.IsComponentsV2]
 					});
 				}
 
@@ -719,9 +721,9 @@ export class ShiftCommand extends Subcommand {
 
 			container.addTextDisplayComponents(display);
 
-			return interaction.reply({
+			return interaction.editReply({
 				components: [container],
-				flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+				flags: [MessageFlags.IsComponentsV2]
 			});
 		} catch (error) {
 			this.container.logger.error('Error in shift self view:', error);
@@ -733,9 +735,9 @@ export class ShiftCommand extends Subcommand {
 
 			container.addTextDisplayComponents(display);
 
-			return interaction.reply({
+			return interaction.editReply({
 				components: [container],
-				flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+				flags: [MessageFlags.IsComponentsV2]
 			});
 		}
 	}
@@ -753,7 +755,7 @@ export class ShiftCommand extends Subcommand {
 			});
 		}
 
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
 		const user = interaction.options.getUser('user', true);
 		const shiftId = interaction.options.getInteger('shift_id', true);
@@ -779,9 +781,9 @@ export class ShiftCommand extends Subcommand {
 				container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 				container.addTextDisplayComponents(info);
 
-				return interaction.reply({
+				return interaction.editReply({
 					components: [container],
-					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+					flags: [MessageFlags.IsComponentsV2]
 				});
 			}
 
@@ -795,9 +797,9 @@ export class ShiftCommand extends Subcommand {
 				container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 				container.addTextDisplayComponents(info);
 
-				return interaction.reply({
+				return interaction.editReply({
 					components: [container],
-					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+					flags: [MessageFlags.IsComponentsV2]
 				});
 			}
 
@@ -821,9 +823,9 @@ export class ShiftCommand extends Subcommand {
 				container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 				container.addTextDisplayComponents(info);
 
-				return interaction.reply({
+				return interaction.editReply({
 					components: [container],
-					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+					flags: [MessageFlags.IsComponentsV2]
 				});
 			}
 
@@ -836,9 +838,9 @@ export class ShiftCommand extends Subcommand {
 				container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 				container.addTextDisplayComponents(info);
 
-				return interaction.reply({
+				return interaction.editReply({
 					components: [container],
-					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+					flags: [MessageFlags.IsComponentsV2]
 				});
 			}
 
@@ -854,9 +856,9 @@ export class ShiftCommand extends Subcommand {
 				container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 				container.addTextDisplayComponents(info);
 
-				return interaction.reply({
+				return interaction.editReply({
 					components: [container],
-					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+					flags: [MessageFlags.IsComponentsV2]
 				});
 			}
 
@@ -883,9 +885,9 @@ export class ShiftCommand extends Subcommand {
 			container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 			container.addTextDisplayComponents(info);
 
-			return interaction.reply({
+			return interaction.editReply({
 				components: [container],
-				flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+				flags: [MessageFlags.IsComponentsV2]
 			});
 		} catch (error) {
 			this.container.logger.error('Error in department adjust:', error);
@@ -898,9 +900,9 @@ export class ShiftCommand extends Subcommand {
 			container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 			container.addTextDisplayComponents(info);
 
-			return interaction.reply({
+			return interaction.editReply({
 				components: [container],
-				flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+				flags: [MessageFlags.IsComponentsV2]
 			});
 		}
 	}
@@ -952,7 +954,7 @@ export class ShiftCommand extends Subcommand {
 			});
 		}
 
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
 		try {
 			const currentWeekShifts = Database.shifts.getShiftsByWeek(interaction.guildId, 0);
@@ -980,7 +982,7 @@ export class ShiftCommand extends Subcommand {
 			});
 		}
 
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
 		const user = interaction.options.getUser('user', true);
 		const type = interaction.options.getString('type', true);
@@ -1046,9 +1048,9 @@ export class ShiftCommand extends Subcommand {
 					container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 					container.addTextDisplayComponents(info);
 
-					return interaction.reply({
+					return interaction.editReply({
 						components: [container],
-						flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+						flags: [MessageFlags.IsComponentsV2]
 					});
 				} else {
 					const newShift = Database.shifts.startShift(user.id, interaction.guildId, undefined, reason);
@@ -1085,9 +1087,9 @@ export class ShiftCommand extends Subcommand {
 					container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 					container.addTextDisplayComponents(info);
 
-					return interaction.reply({
+					return interaction.editReply({
 						components: [container],
-						flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+						flags: [MessageFlags.IsComponentsV2]
 					});
 				}
 			} else if (type === 'break') {
@@ -1103,9 +1105,9 @@ export class ShiftCommand extends Subcommand {
 					container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 					container.addTextDisplayComponents(info);
 
-					return interaction.reply({
+					return interaction.editReply({
 						components: [container],
-						flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+						flags: [MessageFlags.IsComponentsV2]
 					});
 				}
 
@@ -1156,9 +1158,9 @@ export class ShiftCommand extends Subcommand {
 					container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 					container.addTextDisplayComponents(info);
 
-					return interaction.reply({
+					return interaction.editReply({
 						components: [container],
-						flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+						flags: [MessageFlags.IsComponentsV2]
 					});
 				} else {
 					const newBreak = Database.breaks.startBreak(activeShift.id, user.id, interaction.guildId);
@@ -1196,9 +1198,9 @@ export class ShiftCommand extends Subcommand {
 					container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 					container.addTextDisplayComponents(info);
 
-					return interaction.reply({
+					return interaction.editReply({
 						components: [container],
-						flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+						flags: [MessageFlags.IsComponentsV2]
 					});
 				}
 			}
@@ -1211,9 +1213,9 @@ export class ShiftCommand extends Subcommand {
 			container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 			container.addTextDisplayComponents(info);
 
-			return interaction.reply({
+			return interaction.editReply({
 				components: [container],
-				flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+				flags: [MessageFlags.IsComponentsV2]
 			});
 		} catch (error) {
 			this.container.logger.error('Error in department toggle:', error);
@@ -1226,9 +1228,9 @@ export class ShiftCommand extends Subcommand {
 			container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 			container.addTextDisplayComponents(info);
 
-			return interaction.reply({
+			return interaction.editReply({
 				components: [container],
-				flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+				flags: [MessageFlags.IsComponentsV2]
 			});
 		}
 	}
@@ -1241,7 +1243,7 @@ export class ShiftCommand extends Subcommand {
 			});
 		}
 
-		await interaction.deferReply({ ephemeral: true });
+		await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
 
 		const type = interaction.options.getString('type', true);
 		const user = interaction.options.getUser('user');
@@ -1297,9 +1299,9 @@ export class ShiftCommand extends Subcommand {
 				container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 				container.addTextDisplayComponents(statsDisplay);
 
-				return interaction.reply({
+				return interaction.editReply({
 					components: [container],
-					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+					flags: [MessageFlags.IsComponentsV2]
 				});
 			} else if (type === 'user') {
 				if (!user) {
@@ -1311,9 +1313,9 @@ export class ShiftCommand extends Subcommand {
 					container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 					container.addTextDisplayComponents(info);
 
-					return interaction.reply({
+					return interaction.editReply({
 						components: [container],
-						flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+						flags: [MessageFlags.IsComponentsV2]
 					});
 				}
 
@@ -1388,9 +1390,9 @@ export class ShiftCommand extends Subcommand {
 				container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 				container.addTextDisplayComponents(recentInfo);
 
-				return interaction.reply({
+				return interaction.editReply({
 					components: [container],
-					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+					flags: [MessageFlags.IsComponentsV2]
 				});
 			} else if (type === 'weekly') {
 				const shifts = Database.shifts.getShiftsByWeek(interaction.guildId, weekOffset);
@@ -1444,9 +1446,9 @@ export class ShiftCommand extends Subcommand {
 				container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 				container.addTextDisplayComponents(dailyInfo);
 
-				return interaction.reply({
+				return interaction.editReply({
 					components: [container],
-					flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+					flags: [MessageFlags.IsComponentsV2]
 				});
 			}
 
@@ -1458,9 +1460,9 @@ export class ShiftCommand extends Subcommand {
 			container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 			container.addTextDisplayComponents(info);
 
-			return interaction.reply({
+			return interaction.editReply({
 				components: [container],
-				flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+				flags: [MessageFlags.IsComponentsV2]
 			});
 		} catch (error) {
 			this.container.logger.error('Error in department view:', error);
@@ -1473,9 +1475,9 @@ export class ShiftCommand extends Subcommand {
 			container.addSeparatorComponents((s) => s.setSpacing(SeparatorSpacingSize.Small));
 			container.addTextDisplayComponents(info);
 
-			return interaction.reply({
+			return interaction.editReply({
 				components: [container],
-				flags: [MessageFlags.Ephemeral, MessageFlags.IsComponentsV2]
+				flags: [MessageFlags.IsComponentsV2]
 			});
 		}
 	}
